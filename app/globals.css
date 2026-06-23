@@ -588,6 +588,97 @@ body {
   background: transparent;
 }
 
+/* ── Collapsible chat panel ─────────────────────────────────── */
+.chat-panel {
+  transition:
+    max-height 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    width 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    inset 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    border-radius 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.chat-panel--expanded {
+  inset-inline: 0;
+  bottom: 0;
+  max-height: 58vh;
+  border-radius: 1.5rem 1.5rem 0 0;
+}
+
+.chat-panel--collapsed {
+  inset-inline: 0;
+  bottom: 0;
+  max-height: 4.75rem;
+  border-radius: 1.5rem 1.5rem 0 0;
+}
+
+.chat-panel--collapsed .chat-panel-handle,
+.chat-panel--collapsed .chat-panel-header {
+  border-bottom-color: transparent;
+}
+
+.chat-panel--collapsed .chat-panel-header {
+  padding-block: 0.85rem;
+}
+
+.chat-panel__body {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow: hidden;
+  transition:
+    opacity 0.28s ease,
+    max-height 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.chat-panel--collapsed .chat-panel__body {
+  flex: 0 0 0;
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.chat-panel-toggle-icon {
+  display: inline-block;
+  font-size: 1.1rem;
+  line-height: 1;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.chat-panel--collapsed .chat-panel-toggle-icon {
+  transform: rotate(180deg);
+}
+
+.chat-panel-collapsed-hint {
+  color: #a1a1aa;
+}
+
+@media (min-width: 768px) {
+  .chat-panel--expanded {
+    inset: 0 0 0 auto;
+    left: auto;
+    max-height: none;
+    max-width: 28rem;
+    width: 100%;
+    border-radius: 1.5rem 0 0 1.5rem;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 0;
+  }
+
+  .chat-panel--collapsed {
+    inset: auto 1.25rem 1.25rem auto;
+    left: auto;
+    width: min(22rem, calc(100vw - 2.5rem));
+    max-height: 4.75rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .chat-panel-handle {
+    display: none;
+  }
+}
+
 /* ── Emoji picker ────────────────────────────────────────────── */
 .emoji-picker-shell {
   display: flex;

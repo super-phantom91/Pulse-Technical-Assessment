@@ -27,6 +27,7 @@ export default function ChatPanel({
   onGhost: () => void;
 }) {
   const [draft, setDraft] = useState("");
+  const [expanded, setExpanded] = useState(true);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [emojiCategory, setEmojiCategory] = useState(CHAT_EMOJI_GROUPS[0].label);
   const endRef = useRef<HTMLDivElement>(null);
@@ -200,20 +201,28 @@ export default function ChatPanel({
     setEmojiCategory(label);
   }
 
+  function toggleExpanded() {
+    setExpanded((open) => {
+      if (open) setEmojiOpen(false);
+      return !open;
+    });
+  }
+
   return (
     <div
-      className="animate-slide-up-sheet md:animate-slide-in-right glass-panel-strong absolute inset-x-0 bottom-0 z-20 flex max-h-[58vh] min-h-0 flex-col overflow-hidden rounded-t-3xl text-zinc-100 shadow-2xl md:inset-y-0 md:right-0 md:left-auto md:max-h-none md:max-w-md md:rounded-none md:rounded-l-3xl md:border-l md:border-t-0"
+      className={`chat-panel glass-panel-strong absolute z-20 flex min-h-0 flex-col overflow-hidden text-zinc-100 shadow-2xl ${expanded ? "chat-panel--expanded animate-slide-up-sheet md:animate-slide-in-right" : "chat-panel--collapsed"}`}
       role="region"
       aria-label="Chat"
+      aria-expanded={expanded}
     >
-      <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-zinc-700 md:hidden" />
+      <div className="chat-panel-handle mx-auto mt-2 h-1 w-10 rounded-full bg-zinc-700 md:hidden" />
 
-      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-white/5 px-5 py-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-zinc-700 to-zinc-800 text-lg ring-1 ring-white/10">
+      <header className="chat-panel-header flex shrink-0 items-center justify-between gap-3 border-b border-white/5 px-5 py-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-zinc-700 to-zinc-800 text-lg ring-1 ring-white/10">
             👤
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="font-semibold tracking-tight">Stranger</p>
             <p className="flex items-center gap-1.5 text-xs text-zinc-500">
               <span
@@ -221,39 +230,60 @@ export default function ChatPanel({
                 aria-hidden
               />
               {connected ? "Connected" : "Connecting…"}
+              {!expanded && messages.length > 0 && (
+                <span className="chat-panel-collapsed-hint">
+                  · {messages.length} msg{messages.length === 1 ? "" : "s"}
+                </span>
+              )}
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
-            onClick={onStartVideo}
-            disabled={!connected || videoBusy}
-            className="btn-ghost flex items-center gap-1.5 px-3 py-1.5 text-sm disabled:opacity-35"
-            title="Start video"
+            onClick={toggleExpanded}
+            className="chat-panel-toggle btn-ghost px-2.5 py-1.5 text-sm"
+            aria-label={expanded ? "Collapse chat" : "Expand chat"}
+            title={expanded ? "Collapse chat" : "Expand chat"}
           >
-            <span aria-hidden>📹</span>
-            Video
+            <span className="chat-panel-toggle-icon" aria-hidden>
+              {expanded ? "▾" : "▴"}
+            </span>
           </button>
-          <button
-            type="button"
-            onClick={onGhost}
-            className="btn-ghost flex items-center gap-1.5 px-3 py-1.5 text-sm text-zinc-400 hover:text-zinc-200"
-            title="End chat and hide this stranger for the rest of your session"
-          >
-            <span aria-hidden>👻</span>
-            Ghost
-          </button>
-          <button
-            type="button"
-            onClick={onEnd}
-            className="btn-danger px-3 py-1.5 text-sm"
-          >
-            End
-          </button>
+          {expanded && (
+            <>
+              <button
+                type="button"
+                onClick={onStartVideo}
+                disabled={!connected || videoBusy}
+                className="btn-ghost flex items-center gap-1.5 px-3 py-1.5 text-sm disabled:opacity-35"
+                title="Start video"
+              >
+                <span aria-hidden>📹</span>
+                <span className="hidden sm:inline">Video</span>
+              </button>
+              <button
+                type="button"
+                onClick={onGhost}
+                className="btn-ghost flex items-center gap-1.5 px-3 py-1.5 text-sm text-zinc-400 hover:text-zinc-200"
+                title="End chat and hide this stranger for the rest of your session"
+              >
+                <span aria-hidden>👻</span>
+                <span className="hidden sm:inline">Ghost</span>
+              </button>
+              <button
+                type="button"
+                onClick={onEnd}
+                className="btn-danger px-3 py-1.5 text-sm"
+              >
+                End
+              </button>
+            </>
+          )}
         </div>
       </header>
 
+      <div className="chat-panel__body flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="chat-messages min-h-0 flex-1 space-y-3 overflow-x-hidden overflow-y-auto px-4 py-4">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center py-10 text-center">
@@ -373,6 +403,7 @@ export default function ChatPanel({
             Send
           </button>
         </form>
+      </div>
       </div>
     </div>
   );

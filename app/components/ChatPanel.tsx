@@ -26,13 +26,37 @@ export default function ChatPanel({
 }) {
   const [draft, setDraft] = useState("");
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const [emojiCategory, setEmojiCategory] = useState(CHAT_EMOJI_GROUPS[0].label);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
+  const categoryNavRef = useRef<HTMLDivElement>(null);
+  const emojiPanelScrollRef = useRef<HTMLDivElement>(null);
+
+  const activeEmojiGroup =
+    CHAT_EMOJI_GROUPS.find((g) => g.label === emojiCategory) ??
+    CHAT_EMOJI_GROUPS[0];
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    if (emojiOpen) setEmojiCategory(CHAT_EMOJI_GROUPS[0].label);
+  }, [emojiOpen]);
+
+  useEffect(() => {
+    if (!emojiOpen) return;
+    const activeTab = categoryNavRef.current?.querySelector(
+      `[data-category="${emojiCategory}"]`,
+    );
+    activeTab?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "center",
+    });
+    emojiPanelScrollRef.current?.scrollTo(0, 0);
+  }, [emojiCategory, emojiOpen]);
 
   useEffect(() => {
     if (!emojiOpen) return;
@@ -139,29 +163,57 @@ export default function ChatPanel({
         {emojiOpen && connected && (
           <div
             ref={pickerRef}
-            className="animate-scale-in glass-panel absolute right-2 bottom-full left-2 mb-2 max-h-[min(50vh,20rem)] overflow-y-auto rounded-2xl shadow-xl"
-            role="listbox"
-            aria-label="Insert emoji"
+            className="emoji-picker-shell animate-scale-in glass-panel absolute right-2 bottom-full left-2 mb-2 rounded-2xl shadow-xl"
           >
-            {CHAT_EMOJI_GROUPS.map((group) => (
-              <div key={group.label} className="emoji-picker-section">
-                <p className="emoji-picker-label">{group.label}</p>
-                <div className="emoji-picker">
-                  {group.emojis.map((emoji, i) => (
-                    <button
-                      key={`${group.label}-${i}-${emoji}`}
-                      type="button"
-                      role="option"
-                      className="emoji-picker-btn"
-                      onClick={() => insertEmoji(emoji)}
-                      aria-label={`Insert ${emoji}`}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
+            <nav
+              ref={categoryNavRef}
+              className="emoji-category-nav"
+              role="tablist"
+              aria-label="Emoji categories"
+            >
+              {CHAT_EMOJI_GROUPS.map((group) => {
+                const active = group.label === emojiCategory;
+                return (
+                  <button
+                    key={group.label}
+                    type="button"
+                    role="tab"
+                    data-category={group.label}
+                    aria-selected={active}
+                    title={group.label}
+                    className={`emoji-category-tab ${active ? "emoji-category-tab--active" : ""}`}
+                    onClick={() => setEmojiCategory(group.label)}
+                  >
+                    <span className="emoji-category-icon" aria-hidden>
+                      {group.icon}
+                    </span>
+                    <span className="emoji-category-name">{group.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
+
+            <div
+              ref={emojiPanelScrollRef}
+              className="emoji-picker-panel"
+              role="tabpanel"
+              aria-label={activeEmojiGroup.label}
+            >
+              <p className="emoji-picker-heading">{activeEmojiGroup.label}</p>
+              <div className="emoji-picker">
+                {activeEmojiGroup.emojis.map((emoji, i) => (
+                  <button
+                    key={`${activeEmojiGroup.label}-${i}-${emoji}`}
+                    type="button"
+                    className="emoji-picker-btn"
+                    onClick={() => insertEmoji(emoji)}
+                    aria-label={`Insert ${emoji}`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
               </div>
-            ))}
+            </div>
           </div>
         )}
 

@@ -439,6 +439,79 @@ body {
   }
 }
 
+/* ── Emoji picker ────────────────────────────────────────────── */
+.emoji-picker-section {
+  padding: 0.5rem 0.5rem 0.25rem;
+}
+
+.emoji-picker-section + .emoji-picker-section {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.emoji-picker-label {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin-bottom: 0.35rem;
+  padding: 0.15rem 0.35rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #71717a;
+  background: rgba(8, 8, 14, 0.92);
+  backdrop-filter: blur(8px);
+}
+
+.emoji-picker {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+}
+
+@media (min-width: 768px) {
+  .emoji-picker {
+    grid-template-columns: repeat(10, 1fr);
+  }
+}
+
+.emoji-picker-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  padding: 0.35rem;
+  font-size: 1.25rem;
+  line-height: 1;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.emoji-picker-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.12);
+}
+
+.emoji-toggle-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 9999px;
+  font-size: 1.125rem;
+  transition: background 0.15s ease;
+}
+
+.emoji-toggle-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.emoji-toggle-btn--active {
+  background: rgba(52, 211, 153, 0.15);
+  box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.35);
+}
+
 /* ── Mapbox overrides ────────────────────────────────────────── */
 .mapboxgl-ctrl-attrib {
   opacity: 0.45;

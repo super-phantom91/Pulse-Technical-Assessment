@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { CHAT_EMOJI_GROUPS } from "@/lib/chat-emojis";
 
 export interface ChatMessage {
   id: number;
@@ -24,11 +25,34 @@ export default function ChatPanel({
   onEnd: () => void;
 }) {
   const [draft, setDraft] = useState("");
+  const [emojiOpen, setEmojiOpen] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const pickerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    if (!emojiOpen) return;
+    function onPointerDown(e: MouseEvent) {
+      if (
+        pickerRef.current &&
+        !pickerRef.current.contains(e.target as Node) &&
+        !(e.target as HTMLElement).closest("[data-emoji-toggle]")
+      ) {
+        setEmojiOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [emojiOpen]);
+
+  function insertEmoji(emoji: string) {
+    setDraft((prev) => prev + emoji);
+    inputRef.current?.focus();
+  }
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -36,6 +60,7 @@ export default function ChatPanel({
     if (!text || !connected) return;
     onSend(text);
     setDraft("");
+    setEmojiOpen(false);
   }
 
   return (
@@ -48,15 +73,8 @@ export default function ChatPanel({
 
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-white/5 px-5 py-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-zinc-700 to-zinc-800 ring-1 ring-white/10">
-            <svg
-              className="h-5 w-5 text-zinc-400"
-              fill="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden
-            >
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
-            </svg>
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-zinc-700 to-zinc-800 text-lg ring-1 ring-white/10">
+            👤
           </div>
           <div>
             <p className="font-semibold tracking-tight">Stranger</p>
@@ -77,20 +95,7 @@ export default function ChatPanel({
             className="btn-ghost flex items-center gap-1.5 px-3 py-1.5 text-sm disabled:opacity-35"
             title="Start video"
           >
-            <svg
-              className="h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-              aria-hidden
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z"
-              />
-            </svg>
+            <span aria-hidden>📹</span>
             Video
           </button>
           <button
@@ -106,7 +111,10 @@ export default function ChatPanel({
       <div className="min-h-0 flex-1 space-y-3 overflow-x-hidden overflow-y-auto px-4 py-4">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center py-10 text-center">
-            <p className="text-sm text-zinc-500">
+            <p className="text-3xl" aria-hidden>
+              👋
+            </p>
+            <p className="mt-3 text-sm text-zinc-500">
               Say hello — messages are peer-to-peer
             </p>
             <p className="mt-1 text-xs text-zinc-600">and never stored</p>
@@ -127,25 +135,68 @@ export default function ChatPanel({
         <div ref={endRef} />
       </div>
 
-      <form
-        onSubmit={submit}
-        className="flex shrink-0 gap-2 border-t border-white/5 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
-      >
-        <input
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder={connected ? "Type a message…" : "Connecting…"}
-          disabled={!connected}
-          className="min-w-0 flex-1 rounded-2xl border border-white/5 bg-white/5 px-4 py-2.5 text-sm outline-none placeholder:text-zinc-600 focus:border-emerald-400/40 focus:ring-1 focus:ring-emerald-400/30 disabled:opacity-45"
-        />
-        <button
-          type="submit"
-          disabled={!connected || !draft.trim()}
-          className="btn-pulse px-5 py-2.5 text-sm disabled:opacity-35"
+      <div className="relative shrink-0 border-t border-white/5">
+        {emojiOpen && connected && (
+          <div
+            ref={pickerRef}
+            className="animate-scale-in glass-panel absolute right-2 bottom-full left-2 mb-2 max-h-[min(50vh,20rem)] overflow-y-auto rounded-2xl shadow-xl"
+            role="listbox"
+            aria-label="Insert emoji"
+          >
+            {CHAT_EMOJI_GROUPS.map((group) => (
+              <div key={group.label} className="emoji-picker-section">
+                <p className="emoji-picker-label">{group.label}</p>
+                <div className="emoji-picker">
+                  {group.emojis.map((emoji, i) => (
+                    <button
+                      key={`${group.label}-${i}-${emoji}`}
+                      type="button"
+                      role="option"
+                      className="emoji-picker-btn"
+                      onClick={() => insertEmoji(emoji)}
+                      aria-label={`Insert ${emoji}`}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <form
+          onSubmit={submit}
+          className="flex gap-2 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
         >
-          Send
-        </button>
-      </form>
+          <button
+            type="button"
+            data-emoji-toggle
+            onClick={() => setEmojiOpen((o) => !o)}
+            disabled={!connected}
+            className={`emoji-toggle-btn disabled:opacity-35 ${emojiOpen ? "emoji-toggle-btn--active" : ""}`}
+            aria-label="Insert emoji"
+            aria-expanded={emojiOpen}
+          >
+            😊
+          </button>
+          <input
+            ref={inputRef}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder={connected ? "Type a message…" : "Connecting…"}
+            disabled={!connected}
+            className="min-w-0 flex-1 rounded-2xl border border-white/5 bg-white/5 px-4 py-2.5 text-sm outline-none placeholder:text-zinc-600 focus:border-emerald-400/40 focus:ring-1 focus:ring-emerald-400/30 disabled:opacity-45"
+          />
+          <button
+            type="submit"
+            disabled={!connected || !draft.trim()}
+            className="btn-pulse px-5 py-2.5 text-sm disabled:opacity-35"
+          >
+            Send
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

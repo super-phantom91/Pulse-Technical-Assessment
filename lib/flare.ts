@@ -53,6 +53,7 @@ export const FLARES: FlareMeta[] = [
   },
 ];
 
+/** Parse a request payload into a flare intent, or null if invalid. */
 export function parseFlare(
   payload: string | null | undefined,
 ): FlareIntent | null {
@@ -60,10 +61,12 @@ export function parseFlare(
   return payload as FlareIntent;
 }
 
+/** Metadata for a flare intent (copy, color, emoji). */
 export function flareMeta(intent: FlareIntent): FlareMeta {
   return FLARES.find((f) => f.id === intent) ?? FLARES[1];
 }
 
+/** True when payload is a known flare intent string. */
 export function isValidFlare(payload: string): boolean {
   return VALID.has(payload);
 }

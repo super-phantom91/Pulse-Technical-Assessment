@@ -2,6 +2,7 @@
 
 export type ResonanceBand = "near" | "regional" | "distant" | "far";
 
+/** Great-circle distance in km between two lat/lng points. */
 export function haversineKm(
   lat1: number,
   lng1: number,
@@ -17,6 +18,7 @@ export function haversineKm(
   return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+/** Map distance to a privacy-safe resonance band. */
 export function resonanceBand(km: number): ResonanceBand {
   if (km < 50) return "near";
   if (km < 500) return "regional";
@@ -24,6 +26,7 @@ export function resonanceBand(km: number): ResonanceBand {
   return "far";
 }
 
+/** Human label for a resonance band (never exact km). */
 export function resonanceLabel(band: ResonanceBand): string {
   switch (band) {
     case "near":
@@ -45,7 +48,7 @@ export function pulseDurationSec(km: number): number {
   return 3.4;
 }
 
-/** Gentle arc for the resonance tether between two map points. */
+/** Gentle arc coordinates for the resonance tether between two map points. */
 export function resonanceArc(
   lat1: number,
   lng1: number,

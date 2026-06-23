@@ -1,6 +1,7 @@
 // Client-side helpers for talking to the coordination API.
 import type { PollResponse, SignalType } from "@/lib/types";
 
+/** Join the map; returns privacy-offset coordinates for the client pin. */
 export async function join(
   id: string,
   lat: number,
@@ -17,6 +18,7 @@ export async function join(
   return { lat: data.lat, lng: data.lng };
 }
 
+/** Poll peers and drain the signal mailbox. */
 export async function poll(id: string): Promise<PollResponse> {
   const res = await fetch(`/api/poll?id=${encodeURIComponent(id)}`, {
     credentials: "include",
@@ -26,6 +28,7 @@ export async function poll(id: string): Promise<PollResponse> {
   return res.json();
 }
 
+/** Drop one signal into a peer's mailbox. */
 export async function sendSignal(
   fromId: string,
   toId: string,
@@ -40,7 +43,7 @@ export async function sendSignal(
   });
 }
 
-// Fire-and-forget leave that survives the tab closing.
+/** Fire-and-forget leave that survives tab close. */
 export function leave(id: string): void {
   const body = JSON.stringify({ id });
   if (typeof navigator !== "undefined" && navigator.sendBeacon) {
@@ -56,7 +59,7 @@ export function leave(id: string): void {
   }
 }
 
-/** Notify a connected peer before tab close (same-origin beacon carries session cookie). */
+/** Notify a connected peer before tab close via sendBeacon. */
 export function sendEndBeacon(fromId: string, toId: string): void {
   const body = JSON.stringify({ fromId, toId, type: "end" });
   if (typeof navigator !== "undefined" && navigator.sendBeacon) {

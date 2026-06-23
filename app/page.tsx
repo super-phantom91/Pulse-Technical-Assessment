@@ -27,6 +27,7 @@ type VideoState = "none" | "requesting" | "incoming" | "active";
 const REQUEST_TIMEOUT_MS = 30_000;
 const CONNECT_TIMEOUT_MS = 30_000;
 
+/** Main shell: map, chat, flare picker, and connection state machine. */
 export default function Home() {
   const [phase, setPhase] = useState<"gate" | "live">("gate");
   const [sessionId] = useState(() => crypto.randomUUID());
@@ -44,6 +45,7 @@ export default function Home() {
 
   const [conn, _setConn] = useState<Conn>({ kind: "idle" });
   const connRef = useRef<Conn>(conn);
+  /** Keep conn ref in sync for poll loop and timers. */
   const setConn = (c: Conn) => {
     connRef.current = c;
     _setConn(c);
@@ -51,6 +53,7 @@ export default function Home() {
 
   const [video, _setVideo] = useState<VideoState>("none");
   const videoRef = useRef<VideoState>(video);
+  /** Keep video state in sync with poll/control handlers. */
   const setVideo = (v: VideoState) => {
     videoRef.current = v;
     _setVideo(v);
@@ -61,6 +64,7 @@ export default function Home() {
   const requestTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const connectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  /** Clear the WebRTC connection timeout. */
   function clearConnectTimer() {
     if (connectTimer.current) {
       clearTimeout(connectTimer.current);
@@ -68,6 +72,7 @@ export default function Home() {
     }
   }
 
+  /** Start a timeout while waiting for WebRTC to connect. */
   function startConnectTimer(peerId: string) {
     clearConnectTimer();
     connectTimer.current = setTimeout(() => {
@@ -81,16 +86,19 @@ export default function Home() {
     }, CONNECT_TIMEOUT_MS);
   }
 
+  /** Show a temporary toast notice. */
   function showNotice(text: string) {
     setNotice(text);
     window.setTimeout(() => setNotice(null), 3500);
   }
 
+  /** Append a chat message and pulse the map tether. */
   function addMessage(mine: boolean, text: string) {
     setMessages((prev) => [...prev, { id: msgId.current++, mine, text }]);
     setChatPulse((n) => n + 1);
   }
 
+  /** Reset connection, media, and chat state. */
   function teardown(message?: string) {
     if (connRef.current.kind === "idle" && !peerRef.current) return;
     if (requestTimer.current) clearTimeout(requestTimer.current);
@@ -106,6 +114,7 @@ export default function Home() {
     if (message) showNotice(message);
   }
 
+  /** Create WebRTC session and wire callbacks. */
   function startPeer(peerId: string, initiator: boolean) {
     const ps = new PeerSession(initiator, {
       onSignal: (type: DescType, payload: string) => {
@@ -114,7 +123,6 @@ export default function Home() {
       onChat: (text) => addMessage(false, text),
       onControl: (ctrl) => handleControl(ctrl),
       onRemoteStream: (stream) => setRemoteStream(stream),
-      onConnectionState: () => {},
       onChannelOpen: () => {
         clearConnectTimer();
         setConn({ kind: "connected", peerId });
@@ -128,6 +136,7 @@ export default function Home() {
     peerRef.current = ps;
   }
 
+  /** Handle video control messages from the peer. */
   function handleControl(ctrl: PeerControl) {
     const ps = peerRef.current;
     switch (ctrl) {
@@ -163,15 +172,18 @@ export default function Home() {
     }
   }
 
+  /** Open flare intent picker after tapping a peer dot. */
   function openFlarePicker(peerId: string) {
     if (connRef.current.kind !== "idle" || flarePickerPeerId) return;
     setFlarePickerPeerId(peerId);
   }
 
+  /** Dismiss the flare picker without sending a request. */
   function cancelFlarePicker() {
     setFlarePickerPeerId(null);
   }
 
+  /** Send connection request with the chosen flare intent. */
   function sendFlareRequest(flare: FlareIntent) {
     const peerId = flarePickerPeerId;
     if (!peerId || connRef.current.kind !== "idle") return;
@@ -189,6 +201,8 @@ export default function Home() {
     }, REQUEST_TIMEOUT_MS);
   }
 
+  /** Cancel an outbound connection request. */
+  /** Cancel an outbound connection request. */
   function cancelRequest() {
     if (connRef.current.kind === "requesting") {
       void sendSignal(sessionId, connRef.current.peerId, "end");
@@ -196,6 +210,8 @@ export default function Home() {
     teardown();
   }
 
+  /** Accept an incoming connection and start WebRTC as callee. */
+  /** Accept an incoming connection and start WebRTC as callee. */
   function acceptIncoming() {
     if (connRef.current.kind !== "incoming") return;
     const peerId = connRef.current.peerId;
@@ -205,12 +221,16 @@ export default function Home() {
     startConnectTimer(peerId);
   }
 
+  /** Decline an incoming connection request. */
+  /** Decline an incoming connection request. */
   function declineIncoming() {
     if (connRef.current.kind !== "incoming") return;
     void sendSignal(sessionId, connRef.current.peerId, "decline");
     setConn({ kind: "idle" });
   }
 
+  /** End an active or connecting chat. */
+  /** End an active or connecting chat. */
   function endConnection() {
     const c = connRef.current;
     if (c.kind === "connecting" || c.kind === "connected") {
@@ -219,6 +239,8 @@ export default function Home() {
     teardown();
   }
 
+  /** Block peer, end chat, and remove them from the map. */
+  /** Block peer, end chat, and remove them from the map for this session. */
   function ghostPeer() {
     const c = connRef.current;
     if (c.kind !== "connecting" && c.kind !== "connected") return;
@@ -229,12 +251,14 @@ export default function Home() {
     teardown("Ghosted — they won't appear on your map this session.");
   }
 
+  /** Ask the peer to start a video call. */
   function startVideoRequest() {
     if (videoRef.current !== "none" || !peerRef.current) return;
     setVideo("requesting");
     peerRef.current.sendControl("video-request");
   }
 
+  /** Accept peer video request and share local camera. */
   function acceptVideo() {
     const ps = peerRef.current;
     if (!ps) return;
@@ -251,11 +275,13 @@ export default function Home() {
       });
   }
 
+  /** Decline peer video request. */
   function declineVideo() {
     peerRef.current?.sendControl("video-decline");
     setVideo("none");
   }
 
+  /** Stop local and remote video. */
   function endVideo() {
     const ps = peerRef.current;
     ps?.stopVideo();
@@ -265,6 +291,7 @@ export default function Home() {
     setVideo("none");
   }
 
+  /** Route one signal mailbox message through the connection state machine. */
   function processSignal(sig: SignalMsg) {
     switch (sig.type) {
       case "request": {
@@ -400,6 +427,7 @@ export default function Home() {
     };
   }, [sessionId, phase]);
 
+  /** Join the map after entry gate resolves location. */
   async function handleReady(lat: number, lng: number) {
     const { lat: offsetLat, lng: offsetLng } = await join(sessionId, lat, lng);
     setMyLocation({ lat: offsetLat, lng: offsetLng });
@@ -426,12 +454,6 @@ export default function Home() {
     flarePickerPeerId ??
     (conn.kind === "requesting" || conn.kind === "incoming" ? conn.peerId : null);
   const flareIntent =
-    conn.kind === "requesting"
-      ? conn.flare
-      : conn.kind === "incoming"
-        ? conn.flare
-        : null;
-  const waitingFlare =
     conn.kind === "requesting"
       ? conn.flare
       : conn.kind === "incoming"
@@ -484,7 +506,7 @@ export default function Home() {
       {inChat && chatPhase && (
         <ChatPanel
           phase={chatPhase}
-          flareIntent={waitingFlare}
+          flareIntent={flareIntent}
           messages={messages}
           videoBusy={video !== "none"}
           onSend={(text) => {

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
+/** Full-screen video overlay with PiP local preview. */
 export default function VideoPanel({
   localStream,
   remoteStream,

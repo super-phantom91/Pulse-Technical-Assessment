@@ -10,7 +10,6 @@ interface PeerCallbacks {
   onChat: (text: string) => void;
   onControl: (ctrl: PeerControl) => void;
   onRemoteStream: (stream: MediaStream | null) => void;
-  onConnectionState: (state: RTCPeerConnectionState) => void;
   onChannelOpen: () => void;
   onPeerLeft: () => void;
 }
@@ -19,6 +18,7 @@ const ICE_CONFIG: RTCConfiguration = {
   iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
 };
 
+/** WebRTC peer connection with chat data channel and optional video. */
 export class PeerSession {
   private pc: RTCPeerConnection;
   private dc: RTCDataChannel | null = null;
@@ -31,6 +31,7 @@ export class PeerSession {
   private readonly cb: PeerCallbacks;
   private pendingCandidates: RTCIceCandidateInit[] = [];
 
+  /** @param initiator true when this peer sends the connection offer. */
   constructor(initiator: boolean, cb: PeerCallbacks) {
     this.cb = cb;
     this.polite = !initiator;
@@ -60,7 +61,6 @@ export class PeerSession {
 
     this.pc.onconnectionstatechange = () => {
       const state = this.pc.connectionState;
-      this.cb.onConnectionState(state);
       if (
         state === "disconnected" ||
         state === "failed" ||
@@ -88,6 +88,7 @@ export class PeerSession {
     }
   }
 
+  /** Wire chat and control messages on the data channel. */
   private wireDataChannel(dc: RTCDataChannel) {
     dc.onopen = () => this.cb.onChannelOpen();
     dc.onclose = () => this.notifyPeerLeft();
@@ -103,12 +104,14 @@ export class PeerSession {
     };
   }
 
+  /** Fire onPeerLeft once when the connection drops. */
   private notifyPeerLeft() {
     if (this.closed || this.peerLeftNotified) return;
     this.peerLeftNotified = true;
     this.cb.onPeerLeft();
   }
 
+  /** Apply remote SDP or ICE from the signal mailbox. */
   async handleSignal(type: DescType, payload: string) {
     if (this.closed) return;
     const data = JSON.parse(payload);
@@ -142,6 +145,7 @@ export class PeerSession {
     }
   }
 
+  /** Add ICE candidates queued before remote description was set. */
   private async flushPendingCandidates() {
     if (this.pendingCandidates.length === 0 || !this.pc.remoteDescription) {
       return;
@@ -155,20 +159,24 @@ export class PeerSession {
     }
   }
 
+  /** Send a chat message over the data channel. */
   sendChat(text: string) {
     this.safeSend({ t: "chat", text });
   }
 
+  /** Send a video control message over the data channel. */
   sendControl(ctrl: PeerControl) {
     this.safeSend({ t: "ctrl", ctrl });
   }
 
+  /** Send JSON on the data channel when open. */
   private safeSend(obj: unknown) {
     if (this.dc && this.dc.readyState === "open") {
       this.dc.send(JSON.stringify(obj));
     }
   }
 
+  /** Acquire camera/mic and add tracks to the peer connection. */
   async startVideo(): Promise<MediaStream> {
     if (!this.localStream) {
       this.localStream = await navigator.mediaDevices.getUserMedia({
@@ -182,6 +190,7 @@ export class PeerSession {
     return this.localStream;
   }
 
+  /** Stop local video tracks and remove them from the connection. */
   stopVideo() {
     if (this.localStream) {
       for (const track of this.localStream.getTracks()) track.stop();
@@ -196,6 +205,7 @@ export class PeerSession {
     }
   }
 
+  /** Tear down the peer connection and local media. */
   close() {
     if (this.closed) return;
     this.closed = true;

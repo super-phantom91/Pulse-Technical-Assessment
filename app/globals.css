@@ -396,24 +396,12 @@ body {
   animation: fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-.animate-fade-up-delay-1 {
-  animation: fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
-}
-
 .animate-fade-up-delay-2 {
   animation: fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both;
 }
 
 .animate-fade-up-delay-3 {
   animation: fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.35s both;
-}
-
-.animate-slide-in-right {
-  animation: slide-in-right 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.animate-slide-up-sheet {
-  animation: slide-up-sheet 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .animate-scale-in {
@@ -432,37 +420,6 @@ body {
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-@keyframes slide-in-right {
-  from {
-    opacity: 0;
-    transform: translateX(100%);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes slide-up-sheet {
-  from {
-    opacity: 0;
-    transform: translateY(100%);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes chat-panel-fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
   }
 }
 

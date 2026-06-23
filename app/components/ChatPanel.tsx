@@ -12,6 +12,7 @@ export interface ChatMessage {
 
 export type ChatPhase = "incoming" | "waiting" | "connecting" | "connected";
 
+/** Collapsible chat panel with compose field and emoji picker. */
 export default function ChatPanel({
   phase,
   flareIntent,
@@ -75,6 +76,7 @@ export default function ChatPanel({
 
   const COMPOSE_MAX_HEIGHT = 160;
 
+  /** Grow the compose textarea to fit draft content. */
   function resizeCompose() {
     const el = inputRef.current;
     if (!el) return;
@@ -200,11 +202,13 @@ export default function ChatPanel({
     resizeCompose();
   }, [draft]);
 
+  /** Insert emoji at end of draft and refocus compose. */
   function insertEmoji(emoji: string) {
     setDraft((prev) => prev + emoji);
     inputRef.current?.focus();
   }
 
+  /** Send draft when connected; Enter submits, Shift+Enter newline. */
   function submit(e?: React.FormEvent) {
     e?.preventDefault();
     const text = draft.trim();
@@ -214,6 +218,7 @@ export default function ChatPanel({
     setEmojiOpen(false);
   }
 
+  /** Enter sends; Shift+Enter inserts a newline. */
   function onComposeKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -221,11 +226,13 @@ export default function ChatPanel({
     }
   }
 
+  /** Switch emoji category tab (ignored after drag-scroll). */
   function selectEmojiCategory(label: string) {
     if (categoryDragRef.current.suppressClick) return;
     setEmojiCategory(label);
   }
 
+  /** Toggle expanded sheet vs compact header bar. */
   function toggleExpanded() {
     setExpanded((open) => {
       if (open) setEmojiOpen(false);

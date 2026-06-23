@@ -1,5 +1,6 @@
 "use client";
 
+/** Floating toast for notices and in-progress states. */
 export default function StatusChip({
   children,
   action,

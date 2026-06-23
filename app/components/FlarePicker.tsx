@@ -2,6 +2,7 @@
 
 import { FLARES, type FlareIntent } from "@/lib/flare";
 
+/** Intent picker shown before sending a connection request. */
 export default function FlarePicker({
   onSelect,
   onCancel,

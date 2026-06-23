@@ -21,6 +21,7 @@ const TETHER_SOURCE = "resonance-tether";
 const TETHER_LAYER = "resonance-tether-line";
 const TETHER_GLOW = "resonance-tether-glow";
 
+/** Deterministic hue from peer id for marker color. */
 function dotColor(id: string): string {
   let hash = 0;
   for (let i = 0; i < id.length; i++) {
@@ -29,6 +30,7 @@ function dotColor(id: string): string {
   return `hsl(${Math.abs(hash) % 360}, 72%, 58%)`;
 }
 
+/** Add Mapbox GeoJSON layers for the resonance tether arc. */
 function ensureTetherLayers(map: MapboxMap) {
   if (!map.getSource(TETHER_SOURCE)) {
     map.addSource(TETHER_SOURCE, {
@@ -60,6 +62,7 @@ function ensureTetherLayers(map: MapboxMap) {
   }
 }
 
+/** Mapbox map with peer markers, resonance tether, and flare ripples. */
 export default function WorldMap({
   peers,
   me,

@@ -11,6 +11,7 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
+/** Create a Prisma client backed by the pg driver adapter. */
 function createClient() {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {

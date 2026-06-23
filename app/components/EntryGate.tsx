@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { getUserLocation } from "@/lib/geo";
 
+/** Location permission gate before entering the live map. */
 export default function EntryGate({
   onReady,
 }: {
@@ -11,6 +12,7 @@ export default function EntryGate({
   const [status, setStatus] = useState<"idle" | "locating" | "error">("idle");
   const [error, setError] = useState<string>("");
 
+  /** Resolve geolocation and hand off to the main app. */
   async function enter() {
     setStatus("locating");
     setError("");

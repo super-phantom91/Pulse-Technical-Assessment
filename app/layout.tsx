@@ -17,6 +17,7 @@ export const metadata: Metadata = {
   description: "A living globe of anonymous strangers. Tap a dot, start talking.",
 };
 
+/** Root HTML shell and global fonts. */
 export default function RootLayout({
   children,
 }: Readonly<{

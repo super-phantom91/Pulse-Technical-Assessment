@@ -5,6 +5,7 @@
 
 const KM_PER_DEG_LAT = 111.32;
 
+/** Shift coordinates 1–3 km in a random direction for map privacy. */
 export function applyPrivacyOffset(
   lat: number,
   lng: number,
@@ -28,11 +29,12 @@ function clamp(v: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, v));
 }
 
+/** Keep longitude in [-180, 180]. */
 function wrapLng(lng: number): number {
-  // Keep longitude in [-180, 180].
   return ((((lng + 180) % 360) + 360) % 360) - 180;
 }
 
+/** True for finite lat/lng within valid geographic bounds. */
 export function isValidLatLng(lat: unknown, lng: unknown): boolean {
   return (
     typeof lat === "number" &&
@@ -48,6 +50,7 @@ export function isValidLatLng(lat: unknown, lng: unknown): boolean {
 
 export type LatLng = { latitude: number; longitude: number };
 
+/** Wrap getCurrentPosition in a Promise. */
 function readPosition(options: PositionOptions): Promise<LatLng> {
   return new Promise((resolve, reject) => {
     navigator.geolocation.getCurrentPosition(
@@ -62,6 +65,7 @@ function readPosition(options: PositionOptions): Promise<LatLng> {
   });
 }
 
+/** Fallback approximate location from GET /api/geo. */
 async function fetchApproximateLocation(): Promise<LatLng> {
   const res = await fetch("/api/geo", { cache: "no-store" });
   if (!res.ok) {
@@ -74,8 +78,7 @@ async function fetchApproximateLocation(): Promise<LatLng> {
   return { latitude: data.lat as number, longitude: data.lng as number };
 }
 
-// Browser geolocation when available, then server IP lookup as a fallback for
-// desktops where GPS/Wi-Fi fixes are unavailable.
+/** Browser geolocation when available, then IP lookup as fallback. */
 export async function getUserLocation(): Promise<LatLng> {
   if (typeof navigator !== "undefined" && "geolocation" in navigator) {
     const attempts: PositionOptions[] = [

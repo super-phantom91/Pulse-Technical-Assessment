@@ -2,6 +2,7 @@
 
 const KEY = "pulse_ghosted";
 
+/** Load blocked peer ids from sessionStorage. */
 function read(): Set<string> {
   if (typeof window === "undefined") return new Set();
   try {
@@ -15,18 +16,22 @@ function read(): Set<string> {
   }
 }
 
+/** Persist blocked peer ids to sessionStorage. */
 function write(ids: Set<string>): void {
   sessionStorage.setItem(KEY, JSON.stringify([...ids]));
 }
 
+/** Return all ghosted peer ids for this browser session. */
 export function getBlockedIds(): Set<string> {
   return read();
 }
 
+/** True when the peer was ghosted earlier this session. */
 export function isBlocked(id: string): boolean {
   return read().has(id);
 }
 
+/** Add a peer to the session blocklist. */
 export function blockPeer(id: string): void {
   const ids = read();
   ids.add(id);

@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
   return Response.json({ ok: true });
 }
 
-// Helper: deliver an auto-decline from `target` back to `initiator`.
+/** Deliver an auto-decline from target back to initiator. */
 async function sendDecline(targetId: string, initiatorId: string) {
   await prisma.signal.create({
     data: { fromId: targetId, toId: initiatorId, type: "decline", payload: null },

@@ -133,8 +133,3 @@ export const CHAT_EMOJI_GROUPS: readonly ChatEmojiGroup[] = [
     ],
   },
 ] as const;
-
-/** Flat list of every emoji in the picker. */
-export const CHAT_EMOJIS: readonly string[] = CHAT_EMOJI_GROUPS.flatMap(
-  (g) => g.emojis,
-);

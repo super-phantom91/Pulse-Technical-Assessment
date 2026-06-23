@@ -2,6 +2,7 @@
 
 import { flareMeta, type FlareIntent } from "@/lib/flare";
 
+/** Accept/decline modal for connection and video requests. */
 export default function ConnectionPrompt({
   title,
   subtitle,

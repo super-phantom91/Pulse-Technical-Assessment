@@ -4,17 +4,20 @@ import { isValidLatLng } from "@/lib/geo";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+/** Parse a Vercel geo header value to a number. */
 function parseHeaderCoord(value: string | null): number | null {
   if (!value) return null;
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
 }
 
+/** Strip IPv4-mapped IPv6 prefix from an address. */
 function normalizeIp(ip: string | null): string | null {
   if (!ip) return null;
   return ip.startsWith("::ffff:") ? ip.slice(7) : ip;
 }
 
+/** True for loopback and private LAN addresses. */
 function isLocalIp(ip: string | null): boolean {
   const normalized = normalizeIp(ip);
   if (!normalized) return true;
@@ -25,6 +28,7 @@ function isLocalIp(ip: string | null): boolean {
   return false;
 }
 
+/** Resolve approximate lat/lng from client IP via geojs.io. */
 async function lookupByIp(
   ip: string | null,
 ): Promise<{ lat: number; lng: number } | null> {

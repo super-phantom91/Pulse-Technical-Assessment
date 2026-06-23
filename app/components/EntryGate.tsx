@@ -1,36 +1,35 @@
 "use client";
 
 import { useState } from "react";
+import { getUserLocation } from "@/lib/geo";
 
 export default function EntryGate({
   onReady,
 }: {
-  onReady: (lat: number, lng: number) => void;
+  onReady: (lat: number, lng: number) => void | Promise<void>;
 }) {
   const [status, setStatus] = useState<"idle" | "locating" | "error">("idle");
   const [error, setError] = useState<string>("");
 
-  function enter() {
-    if (!("geolocation" in navigator)) {
-      setStatus("error");
-      setError("Your browser doesn't support location access.");
-      return;
-    }
+  async function enter() {
     setStatus("locating");
-    navigator.geolocation.getCurrentPosition(
-      (pos) => onReady(pos.coords.latitude, pos.coords.longitude),
-      (err) => {
-        setStatus("error");
-        setError(
-          err.code === err.PERMISSION_DENIED
-            ? "Location permission is required to place you on the map."
-            : "Couldn't get your location. Please try again.",
-        );
-      },
-      // High accuracy + maximumAge:0 forces a fresh fix (Wi-Fi/GPS scan)
-      // instead of reusing the browser's cached IP-based location.
-      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 },
-    );
+    setError("");
+    try {
+      const coords = await getUserLocation();
+      await onReady(coords.latitude, coords.longitude);
+    } catch (err) {
+      setStatus("error");
+      const code = (err as GeolocationPositionError).code;
+      if (code === 0) {
+        setError("Your browser doesn't support location access.");
+      } else if (code === 1) {
+        setError("Location permission is required to place you on the map.");
+      } else if (code === 2 || code === 3) {
+        setError("Couldn't get your location. Please try again.");
+      } else {
+        setError("Couldn't enter Pulse. Please try again.");
+      }
+    }
   }
 
   return (

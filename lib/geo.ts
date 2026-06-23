@@ -45,3 +45,53 @@ export function isValidLatLng(lat: unknown, lng: unknown): boolean {
     lng <= 180
   );
 }
+
+export type LatLng = { latitude: number; longitude: number };
+
+function readPosition(options: PositionOptions): Promise<LatLng> {
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) =>
+        resolve({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+        }),
+      reject,
+      options,
+    );
+  });
+}
+
+async function fetchApproximateLocation(): Promise<LatLng> {
+  const res = await fetch("/api/geo", { cache: "no-store" });
+  if (!res.ok) {
+    throw Object.assign(new Error("ip geo failed"), { code: 2 });
+  }
+  const data = (await res.json()) as { lat: unknown; lng: unknown };
+  if (!isValidLatLng(data.lat, data.lng)) {
+    throw Object.assign(new Error("invalid ip geo"), { code: 2 });
+  }
+  return { latitude: data.lat as number, longitude: data.lng as number };
+}
+
+// Browser geolocation when available, then server IP lookup as a fallback for
+// desktops where GPS/Wi-Fi fixes are unavailable.
+export async function getUserLocation(): Promise<LatLng> {
+  if (typeof navigator !== "undefined" && "geolocation" in navigator) {
+    const attempts: PositionOptions[] = [
+      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 300_000 },
+      { enableHighAccuracy: true, timeout: 8_000, maximumAge: 60_000 },
+    ];
+
+    for (const options of attempts) {
+      try {
+        const coords = await readPosition(options);
+        if (isValidLatLng(coords.latitude, coords.longitude)) return coords;
+      } catch {
+        // Try the next strategy, then IP lookup.
+      }
+    }
+  }
+
+  return fetchApproximateLocation();
+}

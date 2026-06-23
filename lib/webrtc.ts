@@ -12,6 +12,7 @@ interface PeerCallbacks {
   onRemoteStream: (stream: MediaStream | null) => void;
   onConnectionState: (state: RTCPeerConnectionState) => void;
   onChannelOpen: () => void;
+  onPeerLeft: () => void;
 }
 
 const ICE_CONFIG: RTCConfiguration = {
@@ -26,6 +27,7 @@ export class PeerSession {
   private ignoreOffer = false;
   private localStream: MediaStream | null = null;
   private closed = false;
+  private peerLeftNotified = false;
   private readonly cb: PeerCallbacks;
   private pendingCandidates: RTCIceCandidateInit[] = [];
 
@@ -57,7 +59,22 @@ export class PeerSession {
     };
 
     this.pc.onconnectionstatechange = () => {
-      this.cb.onConnectionState(this.pc.connectionState);
+      const state = this.pc.connectionState;
+      this.cb.onConnectionState(state);
+      if (
+        state === "disconnected" ||
+        state === "failed" ||
+        state === "closed"
+      ) {
+        this.notifyPeerLeft();
+      }
+    };
+
+    this.pc.oniceconnectionstatechange = () => {
+      const ice = this.pc.iceConnectionState;
+      if (ice === "disconnected" || ice === "failed" || ice === "closed") {
+        this.notifyPeerLeft();
+      }
     };
 
     if (initiator) {
@@ -73,6 +90,7 @@ export class PeerSession {
 
   private wireDataChannel(dc: RTCDataChannel) {
     dc.onopen = () => this.cb.onChannelOpen();
+    dc.onclose = () => this.notifyPeerLeft();
     dc.onmessage = (e) => {
       try {
         const msg = JSON.parse(e.data as string);
@@ -83,6 +101,12 @@ export class PeerSession {
         }
       } catch {}
     };
+  }
+
+  private notifyPeerLeft() {
+    if (this.closed || this.peerLeftNotified) return;
+    this.peerLeftNotified = true;
+    this.cb.onPeerLeft();
   }
 
   async handleSignal(type: DescType, payload: string) {

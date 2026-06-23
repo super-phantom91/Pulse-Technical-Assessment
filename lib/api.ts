@@ -55,3 +55,14 @@ export function leave(id: string): void {
     });
   }
 }
+
+/** Notify a connected peer before tab close (same-origin beacon carries session cookie). */
+export function sendEndBeacon(fromId: string, toId: string): void {
+  const body = JSON.stringify({ fromId, toId, type: "end" });
+  if (typeof navigator !== "undefined" && navigator.sendBeacon) {
+    navigator.sendBeacon(
+      "/api/signal",
+      new Blob([body], { type: "application/json" }),
+    );
+  }
+}

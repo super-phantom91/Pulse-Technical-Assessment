@@ -210,7 +210,7 @@ export default function ChatPanel({
 
   return (
     <div
-      className={`chat-panel glass-panel-strong absolute z-20 flex min-h-0 flex-col overflow-hidden text-zinc-100 shadow-2xl ${expanded ? "chat-panel--expanded animate-slide-up-sheet md:animate-slide-in-right" : "chat-panel--collapsed"}`}
+      className={`chat-panel glass-panel-strong absolute z-20 min-h-0 overflow-hidden text-zinc-100 shadow-2xl ${expanded ? "chat-panel--expanded" : "chat-panel--collapsed"}`}
       role="region"
       aria-label="Chat"
       aria-expanded={expanded}
@@ -239,17 +239,6 @@ export default function ChatPanel({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <button
-            type="button"
-            onClick={toggleExpanded}
-            className="chat-panel-toggle btn-ghost px-2.5 py-1.5 text-sm"
-            aria-label={expanded ? "Collapse chat" : "Expand chat"}
-            title={expanded ? "Collapse chat" : "Expand chat"}
-          >
-            <span className="chat-panel-toggle-icon" aria-hidden>
-              {expanded ? "▾" : "▴"}
-            </span>
-          </button>
           {expanded && (
             <>
               <button
@@ -280,10 +269,31 @@ export default function ChatPanel({
               </button>
             </>
           )}
+          <button
+            type="button"
+            onClick={toggleExpanded}
+            className="chat-panel-toggle"
+            aria-expanded={expanded}
+            aria-label={expanded ? "Collapse chat" : "Expand chat"}
+            title={expanded ? "Collapse chat" : "Expand chat"}
+          >
+            <svg
+              className="chat-panel-toggle-chevron"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
         </div>
       </header>
 
-      <div className="chat-panel__body flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="chat-panel__body">
       <div className="chat-messages min-h-0 flex-1 space-y-3 overflow-x-hidden overflow-y-auto px-4 py-4">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center py-10 text-center">

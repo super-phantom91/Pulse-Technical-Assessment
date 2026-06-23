@@ -7,10 +7,10 @@ import ConnectionPrompt from "./components/ConnectionPrompt";
 import ChatPanel, { type ChatMessage } from "./components/ChatPanel";
 import VideoPanel from "./components/VideoPanel";
 import StatusChip from "./components/StatusChip";
-import { join, leave, poll, sendSignal } from "@/lib/api";
+import { join, leave, poll, sendEndBeacon, sendSignal } from "@/lib/api";
 import { blockPeer, getBlockedIds, isBlocked } from "@/lib/blocklist";
 import { PeerSession, type DescType, type PeerControl } from "@/lib/webrtc";
-import { POLL_INTERVAL_MS } from "@/lib/presence";
+import { POLL_INTERVAL_ACTIVE_MS, POLL_INTERVAL_MS } from "@/lib/presence";
 import { type PeerDot, type SignalMsg } from "@/lib/types";
 
 type Conn =
@@ -89,6 +89,7 @@ export default function Home() {
   }
 
   function teardown(message?: string) {
+    if (connRef.current.kind === "idle" && !peerRef.current) return;
     if (requestTimer.current) clearTimeout(requestTimer.current);
     clearConnectTimer();
     peerRef.current?.close();
@@ -109,18 +110,15 @@ export default function Home() {
       onChat: (text) => addMessage(false, text),
       onControl: (ctrl) => handleControl(ctrl),
       onRemoteStream: (stream) => setRemoteStream(stream),
-      onConnectionState: (state) => {
-        if (state === "failed") {
-          const c = connRef.current;
-          if (c.kind === "connecting" || c.kind === "connected") {
-            void sendSignal(sessionId, c.peerId, "end");
-          }
-          teardown("Connection failed (network).");
-        }
-      },
+      onConnectionState: () => {},
       onChannelOpen: () => {
         clearConnectTimer();
         setConn({ kind: "connected", peerId });
+      },
+      onPeerLeft: () => {
+        const c = connRef.current;
+        if (c.kind !== "connecting" && c.kind !== "connected") return;
+        teardown("Stranger disconnected.");
       },
     });
     peerRef.current = ps;
@@ -331,10 +329,31 @@ export default function Home() {
       try {
         const data = await poll(sessionId);
         if (!active) return;
-        setPeers(data.peers.filter((p) => !blockedIds.has(p.id)));
         for (const s of data.signals) processSignalRef.current(s);
+        setPeers(data.peers.filter((p) => !blockedIds.has(p.id)));
+
+        const c = connRef.current;
+        const peerStillOnline = (id: string) =>
+          data.peers.some((p) => p.id === id);
+
+        if (c.kind === "requesting" && !peerStillOnline(c.peerId)) {
+          if (requestTimer.current) clearTimeout(requestTimer.current);
+          teardown("Stranger left.");
+        } else if (c.kind === "incoming" && !peerStillOnline(c.peerId)) {
+          setConn({ kind: "idle" });
+        } else if (
+          (c.kind === "connecting" || c.kind === "connected") &&
+          !peerStillOnline(c.peerId)
+        ) {
+          teardown("Stranger disconnected.");
+        }
       } catch {}
-      if (active) timer = setTimeout(tick, POLL_INTERVAL_MS);
+      if (active) {
+        const c = connRef.current;
+        const interval =
+          c.kind !== "idle" ? POLL_INTERVAL_ACTIVE_MS : POLL_INTERVAL_MS;
+        timer = setTimeout(tick, interval);
+      }
     };
     tick();
 
@@ -346,7 +365,13 @@ export default function Home() {
 
   useEffect(() => {
     if (!sessionId || phase !== "live") return;
-    const onLeave = () => leave(sessionId);
+    const onLeave = () => {
+      const c = connRef.current;
+      if (c.kind === "connecting" || c.kind === "connected") {
+        sendEndBeacon(sessionId, c.peerId);
+      }
+      leave(sessionId);
+    };
     window.addEventListener("pagehide", onLeave);
     window.addEventListener("beforeunload", onLeave);
     return () => {

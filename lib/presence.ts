@@ -8,3 +8,6 @@ export const SIGNAL_TTL_MS = 60_000;
 
 // Client poll interval. Kept here so client + server reason about the same cadence.
 export const POLL_INTERVAL_MS = 1_500;
+
+// Faster poll while in an active chat so disconnects are noticed quickly.
+export const POLL_INTERVAL_ACTIVE_MS = 400;

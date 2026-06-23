@@ -40,13 +40,13 @@ export default function ChatPanel({
 
   return (
     <div
-      className="animate-slide-up-sheet md:animate-slide-in-right glass-panel-strong absolute inset-x-0 bottom-0 z-20 flex max-h-[58vh] flex-col rounded-t-3xl text-zinc-100 shadow-2xl md:inset-y-0 md:right-0 md:left-auto md:max-h-none md:max-w-md md:rounded-none md:rounded-l-3xl md:border-l md:border-t-0"
+      className="animate-slide-up-sheet md:animate-slide-in-right glass-panel-strong absolute inset-x-0 bottom-0 z-20 flex max-h-[58vh] min-h-0 flex-col overflow-hidden rounded-t-3xl text-zinc-100 shadow-2xl md:inset-y-0 md:right-0 md:left-auto md:max-h-none md:max-w-md md:rounded-none md:rounded-l-3xl md:border-l md:border-t-0"
       role="region"
       aria-label="Chat"
     >
       <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-zinc-700 md:hidden" />
 
-      <header className="flex items-center justify-between gap-3 border-b border-white/5 px-5 py-4">
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-white/5 px-5 py-4">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-zinc-700 to-zinc-800 ring-1 ring-white/10">
             <svg
@@ -103,7 +103,7 @@ export default function ChatPanel({
         </div>
       </header>
 
-      <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+      <div className="min-h-0 flex-1 space-y-3 overflow-x-hidden overflow-y-auto px-4 py-4">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center py-10 text-center">
             <p className="text-sm text-zinc-500">
@@ -115,7 +115,7 @@ export default function ChatPanel({
         {messages.map((m) => (
           <div
             key={m.id}
-            className={`flex ${m.mine ? "justify-end" : "justify-start"}`}
+            className={`flex min-w-0 w-full ${m.mine ? "justify-end" : "justify-start"}`}
           >
             <span
               className={`chat-bubble ${m.mine ? "chat-bubble--mine" : "chat-bubble--theirs"}`}
@@ -129,14 +129,14 @@ export default function ChatPanel({
 
       <form
         onSubmit={submit}
-        className="flex gap-2 border-t border-white/5 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+        className="flex shrink-0 gap-2 border-t border-white/5 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
       >
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder={connected ? "Type a message…" : "Connecting…"}
           disabled={!connected}
-          className="flex-1 rounded-2xl border border-white/5 bg-white/5 px-4 py-2.5 text-sm outline-none placeholder:text-zinc-600 focus:border-emerald-400/40 focus:ring-1 focus:ring-emerald-400/30 disabled:opacity-45"
+          className="min-w-0 flex-1 rounded-2xl border border-white/5 bg-white/5 px-4 py-2.5 text-sm outline-none placeholder:text-zinc-600 focus:border-emerald-400/40 focus:ring-1 focus:ring-emerald-400/30 disabled:opacity-45"
         />
         <button
           type="submit"

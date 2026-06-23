@@ -31,6 +31,7 @@
 - **Connection prompts** — Backdrop blur modal with icon, scale-in animation, refined copy.
 - **Video panel** — Cinematic gradient overlay, rounded PiP with shadow, glass control bar.
 - **`StatusChip`** — Reusable toast/banner for notices, requesting, and video-wait states.
+- **Long-message layout fix** — Long or unbroken text (URLs, pasted paragraphs) blew out the chat panel because flex children lacked `min-h-0` / `min-w-0` and bubbles had no word-wrap. Added `overflow-hidden` on the panel, `min-h-0` on the scroll area, `overflow-wrap: anywhere` on bubbles so the header/input stay pinned and messages scroll inside the sheet.
 
 **Thinking:** Kept the map full-screen as the hero; chat is a non-blocking overlay so the globe stays visible. Mobile-first bottom sheet avoids covering the entire map on small screens. Motion is purposeful (entry stagger, bubble appear, status blink) — not decorative noise.
 

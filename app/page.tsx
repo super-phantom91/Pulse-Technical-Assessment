@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import EntryGate from "./components/EntryGate";
 import WorldMap from "./components/WorldMap";
 import ConnectionPrompt from "./components/ConnectionPrompt";
-import ChatPanel, { type ChatMessage } from "./components/ChatPanel";
+import ChatPanel, { type ChatMessage, type ChatPhase } from "./components/ChatPanel";
 import VideoPanel from "./components/VideoPanel";
 import StatusChip from "./components/StatusChip";
 import { join, leave, poll, sendEndBeacon, sendSignal } from "@/lib/api";
@@ -391,9 +391,16 @@ export default function Home() {
     return <EntryGate onReady={handleReady} />;
   }
 
-  const inChat = conn.kind === "connecting" || conn.kind === "connected";
-  const connectedPeerId =
-    conn.kind === "connecting" || conn.kind === "connected" ? conn.peerId : null;
+  const chatPhase: ChatPhase | null =
+    conn.kind === "requesting"
+      ? "waiting"
+      : conn.kind === "connecting"
+        ? "connecting"
+        : conn.kind === "connected"
+          ? "connected"
+          : null;
+  const inChat = chatPhase !== null;
+  const connectedPeerId = conn.kind === "connected" ? conn.peerId : null;
 
   return (
     <main className="fixed inset-0 overflow-hidden">
@@ -411,12 +418,6 @@ export default function Home() {
         <StatusChip variant="notice">{notice}</StatusChip>
       )}
 
-      {conn.kind === "requesting" && (
-        <StatusChip action="Cancel" onAction={cancelRequest}>
-          Reaching out to a stranger…
-        </StatusChip>
-      )}
-
       {conn.kind === "incoming" && (
         <ConnectionPrompt
           title="Someone wants to connect"
@@ -428,17 +429,17 @@ export default function Home() {
         />
       )}
 
-      {inChat && (
+      {inChat && chatPhase && (
         <ChatPanel
+          phase={chatPhase}
           messages={messages}
-          connected={conn.kind === "connected"}
           videoBusy={video !== "none"}
           onSend={(text) => {
             peerRef.current?.sendChat(text);
             addMessage(true, text);
           }}
           onStartVideo={startVideoRequest}
-          onEnd={endConnection}
+          onEnd={conn.kind === "requesting" ? cancelRequest : endConnection}
           onGhost={ghostPeer}
         />
       )}

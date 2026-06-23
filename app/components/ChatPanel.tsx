@@ -9,25 +9,36 @@ export interface ChatMessage {
   text: string;
 }
 
+export type ChatPhase = "waiting" | "connecting" | "connected";
+
 export default function ChatPanel({
+  phase,
   messages,
-  connected,
   videoBusy,
   onSend,
   onStartVideo,
   onEnd,
   onGhost,
 }: {
+  phase: ChatPhase;
   messages: ChatMessage[];
-  connected: boolean;
   videoBusy: boolean;
   onSend: (text: string) => void;
   onStartVideo: () => void;
   onEnd: () => void;
   onGhost: () => void;
 }) {
+  const connected = phase === "connected";
+  const statusLabel =
+    phase === "connected"
+      ? "Connected"
+      : phase === "connecting"
+        ? "Connecting…"
+        : "Waiting for answer…";
   const [draft, setDraft] = useState("");
   const [expanded, setExpanded] = useState(true);
+  const [entering, setEntering] = useState(true);
+  const panelRef = useRef<HTMLDivElement>(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [emojiCategory, setEmojiCategory] = useState(CHAT_EMOJI_GROUPS[0].label);
   const endRef = useRef<HTMLDivElement>(null);
@@ -62,6 +73,17 @@ export default function ChatPanel({
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    const el = panelRef.current;
+    if (!el) return;
+    const onEnd = (e: AnimationEvent) => {
+      if (e.target !== el) return;
+      setEntering(false);
+    };
+    el.addEventListener("animationend", onEnd);
+    return () => el.removeEventListener("animationend", onEnd);
+  }, []);
 
   useEffect(() => {
     if (emojiOpen) setEmojiCategory(CHAT_EMOJI_GROUPS[0].label);
@@ -210,7 +232,8 @@ export default function ChatPanel({
 
   return (
     <div
-      className={`chat-panel glass-panel-strong absolute z-20 min-h-0 overflow-hidden text-zinc-100 shadow-2xl ${expanded ? "chat-panel--expanded" : "chat-panel--collapsed"}`}
+      ref={panelRef}
+      className={`chat-panel glass-panel-strong absolute z-20 min-h-0 overflow-hidden text-zinc-100 shadow-2xl ${entering ? "chat-panel--enter" : ""} ${expanded ? "chat-panel--expanded" : "chat-panel--collapsed"}`}
       role="region"
       aria-label="Chat"
       aria-expanded={expanded}
@@ -229,7 +252,7 @@ export default function ChatPanel({
                 className={`status-dot ${connected ? "status-dot--live" : "status-dot--connecting"}`}
                 aria-hidden
               />
-              {connected ? "Connected" : "Connecting…"}
+              {statusLabel}
               {!expanded && messages.length > 0 && (
                 <span className="chat-panel-collapsed-hint">
                   · {messages.length} msg{messages.length === 1 ? "" : "s"}
@@ -241,31 +264,35 @@ export default function ChatPanel({
         <div className="flex shrink-0 items-center gap-2">
           {expanded && (
             <>
-              <button
-                type="button"
-                onClick={onStartVideo}
-                disabled={!connected || videoBusy}
-                className="btn-ghost flex items-center gap-1.5 px-3 py-1.5 text-sm disabled:opacity-35"
-                title="Start video"
-              >
-                <span aria-hidden>📹</span>
-                <span className="hidden sm:inline">Video</span>
-              </button>
-              <button
-                type="button"
-                onClick={onGhost}
-                className="btn-ghost flex items-center gap-1.5 px-3 py-1.5 text-sm text-zinc-400 hover:text-zinc-200"
-                title="End chat and hide this stranger for the rest of your session"
-              >
-                <span aria-hidden>👻</span>
-                <span className="hidden sm:inline">Ghost</span>
-              </button>
+              {connected && (
+                <>
+                  <button
+                    type="button"
+                    onClick={onStartVideo}
+                    disabled={videoBusy}
+                    className="btn-ghost flex items-center gap-1.5 px-3 py-1.5 text-sm disabled:opacity-35"
+                    title="Start video"
+                  >
+                    <span aria-hidden>📹</span>
+                    <span className="hidden sm:inline">Video</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onGhost}
+                    className="btn-ghost flex items-center gap-1.5 px-3 py-1.5 text-sm text-zinc-400 hover:text-zinc-200"
+                    title="End chat and hide this stranger for the rest of your session"
+                  >
+                    <span aria-hidden>👻</span>
+                    <span className="hidden sm:inline">Ghost</span>
+                  </button>
+                </>
+              )}
               <button
                 type="button"
                 onClick={onEnd}
                 className="btn-danger px-3 py-1.5 text-sm"
               >
-                End
+                {phase === "waiting" ? "Cancel" : "End"}
               </button>
             </>
           )}
@@ -400,7 +427,13 @@ export default function ChatPanel({
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={onComposeKeyDown}
-            placeholder={connected ? "Type a message…" : "Connecting…"}
+            placeholder={
+              connected
+                ? "Type a message…"
+                : phase === "waiting"
+                  ? "Waiting for stranger to accept…"
+                  : "Connecting…"
+            }
             disabled={!connected}
             aria-label="Message"
             className="chat-compose-input min-w-0 flex-1 rounded-2xl border border-white/5 bg-white/5 px-4 py-2.5 text-sm outline-none placeholder:text-zinc-600 focus:border-emerald-400/40 focus:ring-1 focus:ring-emerald-400/30 disabled:opacity-45"

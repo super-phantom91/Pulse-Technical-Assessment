@@ -591,19 +591,24 @@ body {
 /* ── Collapsible chat panel ─────────────────────────────────── */
 .chat-panel {
   display: grid;
-  grid-template-rows: auto auto 1fr;
-  animation: slide-up-sheet 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
-  transition:
-    max-height 0.32s cubic-bezier(0.22, 1, 0.36, 1),
-    height 0.32s cubic-bezier(0.22, 1, 0.36, 1),
-    border-radius 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+  grid-template-rows: auto auto minmax(0, 1fr);
+  contain: layout paint;
+  isolation: isolate;
+  transform: translateZ(0);
+  background: rgba(8, 8, 14, 0.96);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.chat-panel--enter.chat-panel--expanded {
+  animation: slide-up-sheet 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .chat-panel--expanded {
   inset-inline: 0;
   bottom: 0;
-  max-height: 58vh;
   height: 58vh;
+  max-height: 58vh;
   border-radius: 1.5rem 1.5rem 0 0;
 }
 
@@ -615,6 +620,9 @@ body {
   grid-template-rows: 0fr auto 0fr;
   overflow: hidden;
   border-radius: 1.5rem 1.5rem 0 0;
+  transition:
+    grid-template-rows 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    border-radius 0.32s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .chat-panel--collapsed .chat-panel-handle {
@@ -709,7 +717,7 @@ body {
 }
 
 @media (min-width: 768px) {
-  .chat-panel {
+  .chat-panel--enter.chat-panel--expanded {
     animation-name: slide-in-right;
   }
 
@@ -718,8 +726,8 @@ body {
     right: 0;
     bottom: 0;
     left: auto;
+    height: 100dvh;
     max-height: 100dvh;
-    height: 100%;
     max-width: 28rem;
     width: 100%;
     border-radius: 1.5rem 0 0 1.5rem;

@@ -1,8 +1,13 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #030308;
+  --foreground: #f4f4f5;
+  --pulse-emerald: #34d399;
+  --pulse-teal: #2dd4bf;
+  --pulse-glow: rgba(52, 211, 153, 0.45);
+  --glass: rgba(12, 12, 18, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.08);
 }
 
 @theme inline {
@@ -12,68 +17,431 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
 
-/* Live user dots on the map */
+/* ── Aurora landing background ─────────────────────────────── */
+.aurora-bg {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: radial-gradient(ellipse 80% 60% at 50% 120%, #0a1628 0%, #030308 55%);
+}
+
+.aurora-bg::before,
+.aurora-bg::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.5;
+  animation: aurora-drift 18s ease-in-out infinite alternate;
+}
+
+.aurora-bg::before {
+  width: 60vw;
+  height: 60vw;
+  top: -20%;
+  left: -10%;
+  background: radial-gradient(circle, rgba(45, 212, 191, 0.35) 0%, transparent 70%);
+}
+
+.aurora-bg::after {
+  width: 50vw;
+  height: 50vw;
+  bottom: -10%;
+  right: -15%;
+  background: radial-gradient(circle, rgba(52, 211, 153, 0.25) 0%, transparent 70%);
+  animation-delay: -9s;
+  animation-direction: alternate-reverse;
+}
+
+@keyframes aurora-drift {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    transform: translate(5%, 8%) scale(1.08);
+  }
+}
+
+/* ── Pulse orb (entry gate hero) ───────────────────────────── */
+.pulse-orb {
+  position: relative;
+  width: 88px;
+  height: 88px;
+}
+
+.pulse-orb-core {
+  position: absolute;
+  inset: 28%;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--pulse-teal), var(--pulse-emerald));
+  box-shadow:
+    0 0 24px var(--pulse-glow),
+    0 0 48px rgba(45, 212, 191, 0.2);
+  animation: orb-breathe 3s ease-in-out infinite;
+}
+
+.pulse-orb-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  animation: orb-ring 2.8s ease-out infinite;
+}
+
+.pulse-orb-ring:nth-child(2) {
+  animation-delay: 0.9s;
+}
+
+.pulse-orb-ring:nth-child(3) {
+  animation-delay: 1.8s;
+}
+
+@keyframes orb-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 0.92;
+  }
+}
+
+@keyframes orb-ring {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+
+/* ── Map markers ───────────────────────────────────────────── */
 .pulse-dot {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   border-radius: 9999px;
-  border: 2px solid rgba(255, 255, 255, 0.9);
+  border: 2px solid rgba(255, 255, 255, 0.85);
   cursor: pointer;
   padding: 0;
-  box-shadow: 0 0 0 rgba(255, 255, 255, 0.5);
-  animation: pulse-ring 2s ease-out infinite;
-  transition: transform 0.1s ease;
+  box-shadow:
+    0 0 12px currentColor,
+    0 0 0 0 rgba(255, 255, 255, 0.35);
+  animation: dot-pulse 2.4s ease-out infinite;
+  transition:
+    transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.3s ease,
+    filter 0.3s ease;
 }
 
-.pulse-dot:hover {
-  transform: scale(1.3);
+.pulse-dot:hover:not(:disabled) {
+  transform: scale(1.45);
+  filter: brightness(1.15);
 }
 
-/* The user's own "you are here" pin — small, sized like the dots. */
+.pulse-dot--busy {
+  opacity: 0.35;
+  animation: none;
+  cursor: not-allowed;
+  filter: grayscale(0.4);
+}
+
 .pulse-me {
   position: relative;
-  font-size: 18px;
-  line-height: 1;
-  cursor: default;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+  width: 20px;
+  height: 20px;
+}
+
+.pulse-me-ring {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid var(--pulse-emerald);
+  opacity: 0.5;
+  animation: dot-pulse 2s ease-out infinite;
+}
+
+.pulse-me-core {
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--pulse-teal), var(--pulse-emerald));
+  box-shadow: 0 0 16px var(--pulse-glow);
 }
 
 .pulse-me-label {
   position: absolute;
-  bottom: 100%;
+  bottom: calc(100% + 6px);
   left: 50%;
   transform: translateX(-50%);
-  margin-bottom: 1px;
   font-size: 10px;
-  font-weight: 700;
-  color: #ffffff;
-  background: rgba(0, 0, 0, 0.6);
-  padding: 0 5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--pulse-emerald);
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  padding: 2px 8px;
   border-radius: 9999px;
   white-space: nowrap;
+  backdrop-filter: blur(8px);
 }
 
-@keyframes pulse-ring {
+@keyframes dot-pulse {
   0% {
-    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
+    box-shadow:
+      0 0 12px currentColor,
+      0 0 0 0 rgba(255, 255, 255, 0.4);
   }
   70% {
-    box-shadow: 0 0 0 8px rgba(255, 255, 255, 0);
+    box-shadow:
+      0 0 12px currentColor,
+      0 0 0 10px rgba(255, 255, 255, 0);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+    box-shadow:
+      0 0 12px currentColor,
+      0 0 0 0 rgba(255, 255, 255, 0);
   }
+}
+
+/* ── Glass panels ──────────────────────────────────────────── */
+.glass-panel {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.glass-panel-strong {
+  background: rgba(8, 8, 14, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+/* ── Buttons ───────────────────────────────────────────────── */
+.btn-pulse {
+  position: relative;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #2dd4bf, #34d399);
+  color: #042f2e;
+  font-weight: 600;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+  box-shadow: 0 4px 24px rgba(52, 211, 153, 0.35);
+}
+
+.btn-pulse:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 32px rgba(52, 211, 153, 0.45);
+}
+
+.btn-pulse:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-pulse:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-ghost {
+  border-radius: 9999px;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.04);
+  color: #d4d4d8;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.btn-danger {
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #ef4444, #f87171);
+  color: white;
+  font-weight: 600;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 20px rgba(239, 68, 68, 0.3);
+}
+
+.btn-danger:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 28px rgba(239, 68, 68, 0.4);
+}
+
+/* ── Motion utilities ──────────────────────────────────────── */
+.animate-fade-up {
+  animation: fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-fade-up-delay-1 {
+  animation: fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
+}
+
+.animate-fade-up-delay-2 {
+  animation: fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both;
+}
+
+.animate-fade-up-delay-3 {
+  animation: fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.35s both;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-slide-up-sheet {
+  animation: slide-up-sheet 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-toast-in {
+  animation: toast-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-up-sheet {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -12px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* ── Status indicators ───────────────────────────────────────── */
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-dot--live {
+  background: var(--pulse-emerald);
+  box-shadow: 0 0 8px var(--pulse-glow);
+  animation: status-blink 2s ease-in-out infinite;
+}
+
+.status-dot--connecting {
+  background: #fbbf24;
+  box-shadow: 0 0 8px rgba(251, 191, 36, 0.5);
+  animation: status-blink 1s ease-in-out infinite;
+}
+
+@keyframes status-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* ── Chat bubbles ────────────────────────────────────────────── */
+.chat-bubble {
+  max-width: 85%;
+  border-radius: 1.25rem;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  animation: bubble-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.chat-bubble--mine {
+  background: linear-gradient(135deg, #2dd4bf, #34d399);
+  color: #042f2e;
+  border-bottom-right-radius: 0.35rem;
+}
+
+.chat-bubble--theirs {
+  background: rgba(255, 255, 255, 0.07);
+  color: #f4f4f5;
+  border: 1px solid var(--glass-border);
+  border-bottom-left-radius: 0.35rem;
+}
+
+@keyframes bubble-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ── Mapbox overrides ────────────────────────────────────────── */
+.mapboxgl-ctrl-attrib {
+  opacity: 0.45;
+  font-size: 10px !important;
+}
+
+.mapboxgl-ctrl-attrib a {
+  color: #a1a1aa !important;
 }

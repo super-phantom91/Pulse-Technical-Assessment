@@ -8,6 +8,7 @@ import ChatPanel, { type ChatMessage } from "./components/ChatPanel";
 import VideoPanel from "./components/VideoPanel";
 import StatusChip from "./components/StatusChip";
 import { join, leave, poll, sendSignal } from "@/lib/api";
+import { blockPeer, getBlockedIds, isBlocked } from "@/lib/blocklist";
 import { PeerSession, type DescType, type PeerControl } from "@/lib/webrtc";
 import { POLL_INTERVAL_MS } from "@/lib/presence";
 import { type PeerDot, type SignalMsg } from "@/lib/types";
@@ -35,6 +36,8 @@ export default function Home() {
   const [myLocation, setMyLocation] = useState<{ lat: number; lng: number } | null>(
     null,
   );
+  const [blockedIds, setBlockedIds] = useState<Set<string>>(() => getBlockedIds());
+  const [chatPulse, setChatPulse] = useState(0);
 
   const [conn, _setConn] = useState<Conn>({ kind: "idle" });
   const connRef = useRef<Conn>(conn);
@@ -82,6 +85,7 @@ export default function Home() {
 
   function addMessage(mine: boolean, text: string) {
     setMessages((prev) => [...prev, { id: msgId.current++, mine, text }]);
+    setChatPulse((n) => n + 1);
   }
 
   function teardown(message?: string) {
@@ -202,6 +206,16 @@ export default function Home() {
     teardown();
   }
 
+  function ghostPeer() {
+    const c = connRef.current;
+    if (c.kind !== "connecting" && c.kind !== "connected") return;
+    const peerId = c.peerId;
+    blockPeer(peerId);
+    setBlockedIds((prev) => new Set(prev).add(peerId));
+    void sendSignal(sessionId, peerId, "end");
+    teardown("Ghosted — they won't appear on your map this session.");
+  }
+
   function startVideoRequest() {
     if (videoRef.current !== "none" || !peerRef.current) return;
     setVideo("requesting");
@@ -241,6 +255,10 @@ export default function Home() {
   function processSignal(sig: SignalMsg) {
     switch (sig.type) {
       case "request": {
+        if (isBlocked(sig.fromId)) {
+          void sendSignal(sessionId, sig.fromId, "decline");
+          break;
+        }
         if (connRef.current.kind === "idle") {
           setConn({ kind: "incoming", peerId: sig.fromId });
         } else {
@@ -313,7 +331,7 @@ export default function Home() {
       try {
         const data = await poll(sessionId);
         if (!active) return;
-        setPeers(data.peers);
+        setPeers(data.peers.filter((p) => !blockedIds.has(p.id)));
         for (const s of data.signals) processSignalRef.current(s);
       } catch {}
       if (active) timer = setTimeout(tick, POLL_INTERVAL_MS);
@@ -324,7 +342,7 @@ export default function Home() {
       active = false;
       if (timer) clearTimeout(timer);
     };
-  }, [phase, sessionId]);
+  }, [phase, sessionId, blockedIds]);
 
   useEffect(() => {
     if (!sessionId || phase !== "live") return;
@@ -349,6 +367,8 @@ export default function Home() {
   }
 
   const inChat = conn.kind === "connecting" || conn.kind === "connected";
+  const connectedPeerId =
+    conn.kind === "connecting" || conn.kind === "connected" ? conn.peerId : null;
 
   return (
     <main className="fixed inset-0 overflow-hidden">
@@ -358,6 +378,8 @@ export default function Home() {
         onPeerClick={requestConnection}
         canConnect={conn.kind === "idle"}
         showHint={conn.kind === "idle"}
+        connectedPeerId={connectedPeerId}
+        chatPulse={chatPulse}
       />
 
       {notice && (
@@ -392,6 +414,7 @@ export default function Home() {
           }}
           onStartVideo={startVideoRequest}
           onEnd={endConnection}
+          onGhost={ghostPeer}
         />
       )}
 

@@ -16,6 +16,7 @@ export default function ChatPanel({
   onSend,
   onStartVideo,
   onEnd,
+  onGhost,
 }: {
   messages: ChatMessage[];
   connected: boolean;
@@ -23,6 +24,7 @@ export default function ChatPanel({
   onSend: (text: string) => void;
   onStartVideo: () => void;
   onEnd: () => void;
+  onGhost: () => void;
 }) {
   const [draft, setDraft] = useState("");
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -232,6 +234,15 @@ export default function ChatPanel({
           >
             <span aria-hidden>📹</span>
             Video
+          </button>
+          <button
+            type="button"
+            onClick={onGhost}
+            className="btn-ghost flex items-center gap-1.5 px-3 py-1.5 text-sm text-zinc-400 hover:text-zinc-200"
+            title="End chat and hide this stranger for the rest of your session"
+          >
+            <span aria-hidden>👻</span>
+            Ghost
           </button>
           <button
             type="button"

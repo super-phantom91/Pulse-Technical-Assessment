@@ -136,7 +136,7 @@ body {
   box-shadow:
     0 0 12px currentColor,
     0 0 0 0 rgba(255, 255, 255, 0.35);
-  animation: dot-pulse 2.4s ease-out infinite;
+  animation: dot-pulse var(--pulse-duration, 2.4s) ease-out infinite;
   transition:
     transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
     opacity 0.3s ease,
@@ -155,10 +155,73 @@ body {
   filter: grayscale(0.4);
 }
 
+.pulse-dot--connected {
+  transform: scale(1.35);
+  filter: brightness(1.2);
+  box-shadow:
+    0 0 18px currentColor,
+    0 0 28px rgba(52, 211, 153, 0.55);
+}
+
+.pulse-dot--hovered:not(:disabled) {
+  transform: scale(1.5);
+  filter: brightness(1.25);
+}
+
+.pulse-dot[data-resonance="near"] {
+  box-shadow:
+    0 0 14px currentColor,
+    0 0 22px rgba(52, 211, 153, 0.35);
+}
+
 .pulse-me {
   position: relative;
   width: 20px;
   height: 20px;
+}
+
+.pulse-sonar {
+  position: absolute;
+  inset: -18px;
+  border-radius: 50%;
+  border: 1px solid rgba(52, 211, 153, 0.45);
+  opacity: 0;
+  animation: sonar-ring 4.5s ease-out infinite;
+  pointer-events: none;
+}
+
+.pulse-sonar--2 {
+  animation-delay: 1.5s;
+}
+
+.pulse-sonar--3 {
+  animation-delay: 3s;
+}
+
+@keyframes sonar-ring {
+  0% {
+    transform: scale(0.35);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+.resonance-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.resonance-chip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--pulse-emerald);
+  box-shadow: 0 0 8px var(--pulse-glow);
+  animation: orb-breathe 2s ease-in-out infinite;
 }
 
 .pulse-me-ring {

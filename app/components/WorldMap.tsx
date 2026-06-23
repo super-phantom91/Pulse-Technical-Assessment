@@ -67,6 +67,7 @@ export default function WorldMap({
   showHint,
   connectedPeerId,
   chatPulse = 0,
+  quietSonar = false,
 }: {
   peers: PeerDot[];
   me: { lat: number; lng: number } | null;
@@ -75,11 +76,26 @@ export default function WorldMap({
   showHint?: boolean;
   connectedPeerId?: string | null;
   chatPulse?: number;
+  quietSonar?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapboxMap | null>(null);
   const markersRef = useRef<Map<string, Marker>>(new Map());
   const meMarkerRef = useRef<Marker | null>(null);
+  const meCoordsRef = useRef<{ lat: number; lng: number } | null>(null);
+  const peerMarkerStateRef = useRef<
+    Map<
+      string,
+      {
+        lat: number;
+        lng: number;
+        busy: boolean;
+        band: string;
+        pulseSec: number;
+        connected: boolean;
+      }
+    >
+  >(new Map());
   const tooltipRef = useRef<HTMLDivElement | null>(null);
   const [ready, setReady] = useState(false);
   const [hoveredPeerId, setHoveredPeerId] = useState<string | null>(null);
@@ -169,8 +185,13 @@ export default function WorldMap({
         meMarkerRef.current = new mapboxgl.Marker({ element: el, anchor: "center" })
           .setLngLat([me.lng, me.lat])
           .addTo(map);
+        meCoordsRef.current = { lat: me.lat, lng: me.lng };
       } else {
-        meMarkerRef.current.setLngLat([me.lng, me.lat]);
+        const prev = meCoordsRef.current;
+        if (!prev || prev.lat !== me.lat || prev.lng !== me.lng) {
+          meMarkerRef.current.setLngLat([me.lng, me.lat]);
+          meCoordsRef.current = { lat: me.lat, lng: me.lng };
+        }
       }
     })();
 
@@ -178,6 +199,12 @@ export default function WorldMap({
       cancelled = true;
     };
   }, [me, ready]);
+
+  useEffect(() => {
+    const el = meMarkerRef.current?.getElement();
+    if (!el) return;
+    el.classList.toggle("pulse-me--quiet", quietSonar);
+  }, [quietSonar, ready]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -188,6 +215,7 @@ export default function WorldMap({
       const mapboxgl = (await import("mapbox-gl")).default;
       if (cancelled) return;
       const markers = markersRef.current;
+      const peerState = peerMarkerStateRef.current;
       const seen = new Set<string>();
 
       for (const peer of peers) {
@@ -197,6 +225,8 @@ export default function WorldMap({
         const km = me ? haversineKm(me.lat, me.lng, peer.lat, peer.lng) : 5000;
         const band = resonanceBand(km);
         const pulseSec = pulseDurationSec(km);
+        const isConnected = peer.id === connectedPeerId;
+        const prev = peerState.get(peer.id);
 
         if (!marker) {
           const el = document.createElement("button");
@@ -227,25 +257,50 @@ export default function WorldMap({
             .setLngLat([peer.lng, peer.lat])
             .addTo(map);
           markers.set(peer.id, marker);
-        } else {
+        } else if (
+          !prev ||
+          prev.lat !== peer.lat ||
+          prev.lng !== peer.lng
+        ) {
           marker.setLngLat([peer.lng, peer.lat]);
         }
 
-        const el = marker.getElement() as HTMLButtonElement;
-        el.classList.toggle("pulse-dot--busy", peer.busy);
-        el.classList.toggle("pulse-dot--connected", peer.id === connectedPeerId);
-        el.dataset.resonance = band;
-        el.style.setProperty("--pulse-duration", `${pulseSec}s`);
-        el.disabled = peer.busy;
-        el.title = peer.busy
-          ? "Busy"
-          : `${resonanceLabel(band)} — tap to connect`;
+        const unchanged =
+          prev &&
+          prev.lat === peer.lat &&
+          prev.lng === peer.lng &&
+          prev.busy === peer.busy &&
+          prev.band === band &&
+          prev.pulseSec === pulseSec &&
+          prev.connected === isConnected;
+
+        if (!unchanged) {
+          const el = marker.getElement() as HTMLButtonElement;
+          el.classList.toggle("pulse-dot--busy", peer.busy);
+          el.classList.toggle("pulse-dot--connected", isConnected);
+          el.dataset.resonance = band;
+          el.style.setProperty("--pulse-duration", `${pulseSec}s`);
+          el.disabled = peer.busy;
+          el.title = peer.busy
+            ? "Busy"
+            : `${resonanceLabel(band)} — tap to connect`;
+        }
+
+        peerState.set(peer.id, {
+          lat: peer.lat,
+          lng: peer.lng,
+          busy: peer.busy,
+          band,
+          pulseSec,
+          connected: isConnected,
+        });
       }
 
       for (const [id, marker] of markers) {
         if (!seen.has(id)) {
           marker.remove();
           markers.delete(id);
+          peerState.delete(id);
         }
       }
     })();

@@ -9,7 +9,7 @@ export interface ChatMessage {
   text: string;
 }
 
-export type ChatPhase = "waiting" | "connecting" | "connected";
+export type ChatPhase = "incoming" | "waiting" | "connecting" | "connected";
 
 export default function ChatPanel({
   phase,
@@ -34,10 +34,17 @@ export default function ChatPanel({
       ? "Connected"
       : phase === "connecting"
         ? "Connecting…"
-        : "Waiting for answer…";
+        : phase === "incoming"
+          ? "Incoming request…"
+          : "Waiting for answer…";
+  const endLabel =
+    phase === "waiting"
+      ? "Cancel"
+      : phase === "incoming"
+        ? "Decline"
+        : "End";
   const [draft, setDraft] = useState("");
   const [expanded, setExpanded] = useState(true);
-  const [entering, setEntering] = useState(true);
   const panelRef = useRef<HTMLDivElement>(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [emojiCategory, setEmojiCategory] = useState(CHAT_EMOJI_GROUPS[0].label);
@@ -73,17 +80,6 @@ export default function ChatPanel({
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-
-  useEffect(() => {
-    const el = panelRef.current;
-    if (!el) return;
-    const onEnd = (e: AnimationEvent) => {
-      if (e.target !== el) return;
-      setEntering(false);
-    };
-    el.addEventListener("animationend", onEnd);
-    return () => el.removeEventListener("animationend", onEnd);
-  }, []);
 
   useEffect(() => {
     if (emojiOpen) setEmojiCategory(CHAT_EMOJI_GROUPS[0].label);
@@ -233,7 +229,7 @@ export default function ChatPanel({
   return (
     <div
       ref={panelRef}
-      className={`chat-panel glass-panel-strong absolute z-20 min-h-0 overflow-hidden text-zinc-100 shadow-2xl ${entering ? "chat-panel--enter" : ""} ${expanded ? "chat-panel--expanded" : "chat-panel--collapsed"}`}
+      className={`chat-panel glass-panel-strong absolute z-20 min-h-0 overflow-hidden text-zinc-100 shadow-2xl ${expanded ? "chat-panel--expanded" : "chat-panel--collapsed"}`}
       role="region"
       aria-label="Chat"
       aria-expanded={expanded}
@@ -249,7 +245,7 @@ export default function ChatPanel({
             <p className="font-semibold tracking-tight">Stranger</p>
             <p className="flex items-center gap-1.5 text-xs text-zinc-500">
               <span
-                className={`status-dot ${connected ? "status-dot--live" : "status-dot--connecting"}`}
+                className={`status-dot ${connected ? "status-dot--live" : "status-dot--pending"}`}
                 aria-hidden
               />
               {statusLabel}
@@ -261,41 +257,36 @@ export default function ChatPanel({
             </p>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {expanded && (
-            <>
-              {connected && (
-                <>
-                  <button
-                    type="button"
-                    onClick={onStartVideo}
-                    disabled={videoBusy}
-                    className="btn-ghost flex items-center gap-1.5 px-3 py-1.5 text-sm disabled:opacity-35"
-                    title="Start video"
-                  >
-                    <span aria-hidden>📹</span>
-                    <span className="hidden sm:inline">Video</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onGhost}
-                    className="btn-ghost flex items-center gap-1.5 px-3 py-1.5 text-sm text-zinc-400 hover:text-zinc-200"
-                    title="End chat and hide this stranger for the rest of your session"
-                  >
-                    <span aria-hidden>👻</span>
-                    <span className="hidden sm:inline">Ghost</span>
-                  </button>
-                </>
-              )}
-              <button
-                type="button"
-                onClick={onEnd}
-                className="btn-danger px-3 py-1.5 text-sm"
-              >
-                {phase === "waiting" ? "Cancel" : "End"}
-              </button>
-            </>
-          )}
+        <div className="chat-panel-header-actions flex shrink-0 items-center gap-2">
+          <div className="chat-panel-header-actions-primary flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onStartVideo}
+              disabled={!connected || videoBusy}
+              className="btn-ghost chat-panel-action-btn flex items-center gap-1.5 px-3 py-1.5 text-sm disabled:opacity-60"
+              title="Start video"
+            >
+              <span aria-hidden>📹</span>
+              <span className="chat-panel-action-label">Video</span>
+            </button>
+            <button
+              type="button"
+              onClick={onGhost}
+              disabled={!connected}
+              className="btn-ghost chat-panel-action-btn flex items-center gap-1.5 px-3 py-1.5 text-sm text-zinc-400 hover:text-zinc-200 disabled:opacity-60 disabled:hover:text-zinc-400"
+              title="End chat and hide this stranger for the rest of your session"
+            >
+              <span aria-hidden>👻</span>
+              <span className="chat-panel-action-label">Ghost</span>
+            </button>
+            <button
+              type="button"
+              onClick={onEnd}
+              className="btn-danger chat-panel-action-btn px-3 py-1.5 text-sm"
+            >
+              {endLabel}
+            </button>
+          </div>
           <button
             type="button"
             onClick={toggleExpanded}

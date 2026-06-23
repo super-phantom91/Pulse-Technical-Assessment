@@ -392,13 +392,15 @@ export default function Home() {
   }
 
   const chatPhase: ChatPhase | null =
-    conn.kind === "requesting"
-      ? "waiting"
-      : conn.kind === "connecting"
-        ? "connecting"
-        : conn.kind === "connected"
-          ? "connected"
-          : null;
+    conn.kind === "incoming"
+      ? "incoming"
+      : conn.kind === "requesting"
+        ? "waiting"
+        : conn.kind === "connecting"
+          ? "connecting"
+          : conn.kind === "connected"
+            ? "connected"
+            : null;
   const inChat = chatPhase !== null;
   const connectedPeerId = conn.kind === "connected" ? conn.peerId : null;
 
@@ -412,6 +414,7 @@ export default function Home() {
         showHint={conn.kind === "idle"}
         connectedPeerId={connectedPeerId}
         chatPulse={chatPulse}
+        quietSonar={inChat}
       />
 
       {notice && (
@@ -439,7 +442,13 @@ export default function Home() {
             addMessage(true, text);
           }}
           onStartVideo={startVideoRequest}
-          onEnd={conn.kind === "requesting" ? cancelRequest : endConnection}
+          onEnd={
+            conn.kind === "requesting"
+              ? cancelRequest
+              : conn.kind === "incoming"
+                ? declineIncoming
+                : endConnection
+          }
           onGhost={ghostPeer}
         />
       )}

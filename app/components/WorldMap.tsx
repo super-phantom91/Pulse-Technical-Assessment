@@ -10,6 +10,7 @@ import {
   resonanceBand,
   resonanceLabel,
 } from "@/lib/distance";
+import { flareMeta, type FlareIntent } from "@/lib/flare";
 import type { PeerDot } from "@/lib/types";
 
 const TOKEN =
@@ -68,6 +69,8 @@ export default function WorldMap({
   connectedPeerId,
   chatPulse = 0,
   quietSonar = false,
+  flarePeerId = null,
+  flareIntent = null,
 }: {
   peers: PeerDot[];
   me: { lat: number; lng: number } | null;
@@ -77,6 +80,8 @@ export default function WorldMap({
   connectedPeerId?: string | null;
   chatPulse?: number;
   quietSonar?: boolean;
+  flarePeerId?: string | null;
+  flareIntent?: FlareIntent | null;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapboxMap | null>(null);
@@ -93,6 +98,7 @@ export default function WorldMap({
         band: string;
         pulseSec: number;
         connected: boolean;
+        flare: boolean;
       }
     >
   >(new Map());
@@ -226,9 +232,13 @@ export default function WorldMap({
         const band = resonanceBand(km);
         const pulseSec = pulseDurationSec(km);
         const isConnected = peer.id === connectedPeerId;
+        const isFlare = peer.id === flarePeerId;
+        const flareHue = flareIntent ? flareMeta(flareIntent).hue : 158;
         const prev = peerState.get(peer.id);
 
         if (!marker) {
+          const wrap = document.createElement("div");
+          wrap.className = "pulse-dot-wrap";
           const el = document.createElement("button");
           el.className = "pulse-dot";
           el.style.background = color;
@@ -253,7 +263,16 @@ export default function WorldMap({
             setHoveredPeerId((id) => (id === peer.id ? null : id));
             setHoverLabel(null);
           });
-          marker = new mapboxgl.Marker({ element: el })
+          wrap.appendChild(el);
+          const ring1 = document.createElement("span");
+          ring1.className = "flare-ring flare-ring--1";
+          ring1.setAttribute("aria-hidden", "true");
+          const ring2 = document.createElement("span");
+          ring2.className = "flare-ring flare-ring--2";
+          ring2.setAttribute("aria-hidden", "true");
+          wrap.appendChild(ring1);
+          wrap.appendChild(ring2);
+          marker = new mapboxgl.Marker({ element: wrap, anchor: "center" })
             .setLngLat([peer.lng, peer.lat])
             .addTo(map);
           markers.set(peer.id, marker);
@@ -272,10 +291,12 @@ export default function WorldMap({
           prev.busy === peer.busy &&
           prev.band === band &&
           prev.pulseSec === pulseSec &&
-          prev.connected === isConnected;
+          prev.connected === isConnected &&
+          prev.flare === isFlare;
 
         if (!unchanged) {
-          const el = marker.getElement() as HTMLButtonElement;
+          const wrap = marker.getElement();
+          const el = wrap.querySelector(".pulse-dot") as HTMLButtonElement;
           el.classList.toggle("pulse-dot--busy", peer.busy);
           el.classList.toggle("pulse-dot--connected", isConnected);
           el.dataset.resonance = band;
@@ -284,6 +305,11 @@ export default function WorldMap({
           el.title = peer.busy
             ? "Busy"
             : `${resonanceLabel(band)} — tap to connect`;
+          wrap.classList.toggle("pulse-dot-wrap--flare", isFlare);
+          wrap.style.setProperty(
+            "--flare-color",
+            `hsl(${flareHue} 78% 58%)`,
+          );
         }
 
         peerState.set(peer.id, {
@@ -293,6 +319,7 @@ export default function WorldMap({
           band,
           pulseSec,
           connected: isConnected,
+          flare: isFlare,
         });
       }
 
@@ -308,7 +335,7 @@ export default function WorldMap({
     return () => {
       cancelled = true;
     };
-  }, [peers, ready, me, connectedPeerId]);
+  }, [peers, ready, me, connectedPeerId, flarePeerId, flareIntent]);
 
   // Resonance tether — arc to connected peer or hovered peer while idle.
   useEffect(() => {
@@ -408,7 +435,7 @@ export default function WorldMap({
       {showHint && peers.length > 0 && !connectedPeerId && (
         <div className="animate-fade-up pointer-events-none absolute bottom-5 left-1/2 z-10 -translate-x-1/2">
           <p className="glass-panel rounded-full px-4 py-2 text-xs text-zinc-400">
-            Strangers pulse faster when they&apos;re closer — tap a dot to connect
+            Strangers pulse faster when they&apos;re closer — tap a dot to send a flare
           </p>
         </div>
       )}

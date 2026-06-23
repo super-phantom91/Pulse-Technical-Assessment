@@ -1,5 +1,7 @@
 "use client";
 
+import { flareMeta, type FlareIntent } from "@/lib/flare";
+
 export default function ConnectionPrompt({
   title,
   subtitle,
@@ -8,6 +10,7 @@ export default function ConnectionPrompt({
   onAccept,
   onDecline,
   icon = "connect",
+  flare,
 }: {
   title: string;
   subtitle?: string;
@@ -16,16 +19,28 @@ export default function ConnectionPrompt({
   onAccept: () => void;
   onDecline: () => void;
   icon?: "connect" | "video";
+  flare?: FlareIntent | null;
 }) {
+  const flareStyle = flare
+    ? ({ "--flare-hue": flareMeta(flare).hue } as React.CSSProperties)
+    : undefined;
+
   return (
     <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/50 p-6 backdrop-blur-md">
       <div
-        className="animate-scale-in glass-panel-strong w-full max-w-sm rounded-3xl p-8 text-center text-zinc-100 shadow-2xl"
+        className={`animate-scale-in glass-panel-strong w-full max-w-sm rounded-3xl p-8 text-center text-zinc-100 shadow-2xl ${flare ? "connection-prompt--flare" : ""}`}
+        style={flareStyle}
         role="dialog"
         aria-modal
       >
-        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 ring-1 ring-emerald-400/20">
-          {icon === "video" ? (
+        <div
+          className={`mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl ring-1 ${flare ? "connection-prompt-flare-icon" : "bg-emerald-500/10 ring-emerald-400/20"}`}
+        >
+          {flare ? (
+            <span className="text-3xl" aria-hidden>
+              {flareMeta(flare).emoji}
+            </span>
+          ) : icon === "video" ? (
             <svg
               className="h-7 w-7 text-emerald-400"
               fill="none"

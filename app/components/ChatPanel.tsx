@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { CHAT_EMOJI_GROUPS } from "@/lib/chat-emojis";
+import { flareMeta, type FlareIntent } from "@/lib/flare";
 
 export interface ChatMessage {
   id: number;
@@ -13,6 +14,7 @@ export type ChatPhase = "incoming" | "waiting" | "connecting" | "connected";
 
 export default function ChatPanel({
   phase,
+  flareIntent,
   messages,
   videoBusy,
   onSend,
@@ -21,6 +23,7 @@ export default function ChatPanel({
   onGhost,
 }: {
   phase: ChatPhase;
+  flareIntent?: FlareIntent | null;
   messages: ChatMessage[];
   videoBusy: boolean;
   onSend: (text: string) => void;
@@ -30,13 +33,17 @@ export default function ChatPanel({
 }) {
   const connected = phase === "connected";
   const statusLabel =
-    phase === "connected"
-      ? "Connected"
-      : phase === "connecting"
-        ? "Connecting…"
-        : phase === "incoming"
-          ? "Incoming request…"
-          : "Waiting for answer…";
+    phase === "waiting" && flareIntent
+      ? `Sending ${flareMeta(flareIntent).label.toLowerCase()} flare…`
+      : phase === "incoming" && flareIntent
+        ? `${flareMeta(flareIntent).emoji} ${flareMeta(flareIntent).promptTitle}`
+        : phase === "connected"
+        ? "Connected"
+        : phase === "connecting"
+          ? "Connecting…"
+          : phase === "incoming"
+            ? "Incoming request…"
+            : "Waiting for answer…";
   const endLabel =
     phase === "waiting"
       ? "Cancel"

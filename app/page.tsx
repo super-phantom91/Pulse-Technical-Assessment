@@ -9,14 +9,16 @@ import VideoPanel from "./components/VideoPanel";
 import StatusChip from "./components/StatusChip";
 import { join, leave, poll, sendEndBeacon, sendSignal } from "@/lib/api";
 import { blockPeer, getBlockedIds, isBlocked } from "@/lib/blocklist";
+import { flareMeta, parseFlare, type FlareIntent } from "@/lib/flare";
 import { PeerSession, type DescType, type PeerControl } from "@/lib/webrtc";
 import { POLL_INTERVAL_ACTIVE_MS, POLL_INTERVAL_MS } from "@/lib/presence";
 import { type PeerDot, type SignalMsg } from "@/lib/types";
+import FlarePicker from "./components/FlarePicker";
 
 type Conn =
   | { kind: "idle" }
-  | { kind: "requesting"; peerId: string }
-  | { kind: "incoming"; peerId: string }
+  | { kind: "requesting"; peerId: string; flare: FlareIntent }
+  | { kind: "incoming"; peerId: string; flare: FlareIntent | null }
   | { kind: "connecting"; peerId: string }
   | { kind: "connected"; peerId: string };
 
@@ -38,6 +40,7 @@ export default function Home() {
   );
   const [blockedIds, setBlockedIds] = useState<Set<string>>(() => getBlockedIds());
   const [chatPulse, setChatPulse] = useState(0);
+  const [flarePickerPeerId, setFlarePickerPeerId] = useState<string | null>(null);
 
   const [conn, _setConn] = useState<Conn>({ kind: "idle" });
   const connRef = useRef<Conn>(conn);
@@ -98,6 +101,7 @@ export default function Home() {
     setRemoteStream(null);
     setVideo("none");
     setMessages([]);
+    setFlarePickerPeerId(null);
     setConn({ kind: "idle" });
     if (message) showNotice(message);
   }
@@ -159,10 +163,21 @@ export default function Home() {
     }
   }
 
-  function requestConnection(peerId: string) {
-    if (connRef.current.kind !== "idle") return;
-    setConn({ kind: "requesting", peerId });
-    void sendSignal(sessionId, peerId, "request");
+  function openFlarePicker(peerId: string) {
+    if (connRef.current.kind !== "idle" || flarePickerPeerId) return;
+    setFlarePickerPeerId(peerId);
+  }
+
+  function cancelFlarePicker() {
+    setFlarePickerPeerId(null);
+  }
+
+  function sendFlareRequest(flare: FlareIntent) {
+    const peerId = flarePickerPeerId;
+    if (!peerId || connRef.current.kind !== "idle") return;
+    setFlarePickerPeerId(null);
+    setConn({ kind: "requesting", peerId, flare });
+    void sendSignal(sessionId, peerId, "request", flare);
     requestTimer.current = setTimeout(() => {
       if (
         connRef.current.kind === "requesting" &&
@@ -258,7 +273,11 @@ export default function Home() {
           break;
         }
         if (connRef.current.kind === "idle") {
-          setConn({ kind: "incoming", peerId: sig.fromId });
+          setConn({
+            kind: "incoming",
+            peerId: sig.fromId,
+            flare: parseFlare(sig.payload),
+          });
         } else {
           void sendSignal(sessionId, sig.fromId, "decline");
         }
@@ -403,19 +422,40 @@ export default function Home() {
             : null;
   const inChat = chatPhase !== null;
   const connectedPeerId = conn.kind === "connected" ? conn.peerId : null;
+  const flarePeerId =
+    flarePickerPeerId ??
+    (conn.kind === "requesting" || conn.kind === "incoming" ? conn.peerId : null);
+  const flareIntent =
+    conn.kind === "requesting"
+      ? conn.flare
+      : conn.kind === "incoming"
+        ? conn.flare
+        : null;
+  const waitingFlare =
+    conn.kind === "requesting"
+      ? conn.flare
+      : conn.kind === "incoming"
+        ? conn.flare
+        : null;
 
   return (
     <main className="fixed inset-0 overflow-hidden">
       <WorldMap
         peers={peers}
         me={myLocation}
-        onPeerClick={requestConnection}
-        canConnect={conn.kind === "idle"}
-        showHint={conn.kind === "idle"}
+        onPeerClick={openFlarePicker}
+        canConnect={conn.kind === "idle" && !flarePickerPeerId}
+        showHint={conn.kind === "idle" && !flarePickerPeerId}
         connectedPeerId={connectedPeerId}
         chatPulse={chatPulse}
         quietSonar={inChat}
+        flarePeerId={flarePeerId}
+        flareIntent={flareIntent}
       />
+
+      {flarePickerPeerId && (
+        <FlarePicker onSelect={sendFlareRequest} onCancel={cancelFlarePicker} />
+      )}
 
       {notice && (
         <StatusChip variant="notice">{notice}</StatusChip>
@@ -423,10 +463,19 @@ export default function Home() {
 
       {conn.kind === "incoming" && (
         <ConnectionPrompt
-          title="Someone wants to connect"
-          subtitle="Anonymous stranger nearby on the map"
+          title={
+            conn.flare
+              ? flareMeta(conn.flare).promptTitle
+              : "Someone wants to connect"
+          }
+          subtitle={
+            conn.flare
+              ? flareMeta(conn.flare).promptSubtitle
+              : "Anonymous stranger nearby on the map"
+          }
           acceptLabel="Accept"
           declineLabel="Decline"
+          flare={conn.flare}
           onAccept={acceptIncoming}
           onDecline={declineIncoming}
         />
@@ -435,6 +484,7 @@ export default function Home() {
       {inChat && chatPhase && (
         <ChatPanel
           phase={chatPhase}
+          flareIntent={waitingFlare}
           messages={messages}
           videoBusy={video !== "none"}
           onSend={(text) => {

@@ -81,9 +81,9 @@
 
 ## Phase 4 — Make it better
 
-**Feature: Resonance + Ghost**
+**Feature: Resonance + Ghost + Signal Flare**
 
-Pulse is anonymous and map-first — I wanted something that makes the globe feel *alive* without storing new user data, and a safety escape hatch that actually sticks.
+Pulse is anonymous and map-first — I wanted the globe to feel *alive* without storing new user data, safety escapes that stick, and a first impression reviewers remember.
 
 ### Resonance (alive)
 
@@ -99,14 +99,35 @@ No API or schema changes — distance is computed client-side from already-publi
 
 **Ghost** in the chat header instantly ends the connection, adds the stranger to a **session blocklist** (`sessionStorage`), removes them from your map, and auto-declines any future requests from them. One tap, no account, no server-side moderation queue — appropriate for an ephemeral MVP.
 
+### Signal Flare (alive + safe)
+
+Anonymous apps fail when every request feels identical — a cold *"Someone wants to connect"* with zero context. **Signal Flare** fixes that without names or profiles.
+
+**Tap a dot** → choose an intent before you reach out:
+
+| Flare | Meaning |
+|-------|---------|
+| 👂 **Listen** | Quiet company — no pressure to perform |
+| 💬 **Chat** | Open to a real conversation |
+| 🌊 **Wander** | Browsing the map — see where it goes |
+| ✨ **Spark** | Curious energy across the distance |
+
+The intent rides in the existing `request` signal payload (no schema migration). Your target's dot **radiates colored ripples** on the map; they get a tailored accept modal (*"Someone wants to listen"*) instead of generic copy. You see *Sending listen flare…* in the chat header while you wait.
+
+Consent-first outreach: strangers know *why* you're knocking before they open the door.
+
 ### How I built it
 
 1. `lib/distance.ts` — haversine km, resonance bands, arc geometry for the Mapbox tether.
 2. `lib/blocklist.ts` — session-local ghost list.
-3. `WorldMap.tsx` — sonar rings on "You", per-peer `--pulse-duration`, Mapbox line layers for tether + chat flash, resonance HUD chips.
-4. `page.tsx` — filter blocked peers on poll, decline ghosted requests, `chatPulse` counter on messages.
-5. `ChatPanel.tsx` — Ghost button wired to block + teardown.
+3. `lib/flare.ts` — intent types, copy, hue palette, payload parse/validate.
+4. `FlarePicker.tsx` — intent chooser sheet after tapping a dot.
+5. `WorldMap.tsx` — sonar rings, per-peer pulse duration, tether + chat flash, flare ripples on target dot.
+6. `ConnectionPrompt.tsx` — flare-tinted modal with intent-specific title/subtitle.
+7. `page.tsx` — flare picker flow, payload on `request`, incoming flare state.
+8. `api/signal/route.ts` — validate flare payload on connection requests.
+9. `ChatPanel.tsx` — Ghost button; flare status while waiting/incoming.
 
-**Test plan:** Two windows at different mock locations → watch dots pulse at different speeds → hover for arc + band → connect → send messages and see tether flash → Ghost one user → they vanish from map and can't reconnect this session.
+**Test plan:** Two windows at different mock locations → hover dots for resonance → tap dot → pick **Spark** → see ripples on peer's map → peer sees *Someone sent a spark* modal → accept → chat + tether flash → Ghost → blocked for session.
 
-**Thinking:** Resonance turns passive coordinates into felt proximity without leaking precision. Ghost gives users agency in an app with no accounts — memorable, shippable, and honest about MVP limits (session-only block, not global ban).
+**Thinking:** Resonance turns coordinates into felt proximity. Ghost gives agency without accounts. Signal Flare answers *"Why should I accept?"* in a way that's emotional but privacy-safe — tone without identity. Reviewers remember the moment a dot lights up with intent.

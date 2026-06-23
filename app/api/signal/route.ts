@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { isValidFlare } from "@/lib/flare";
 import { prisma } from "@/lib/prisma";
 import type { SignalType } from "@/lib/types";
 import { isMailboxFull, isSignalRateLimited } from "@/lib/rate-limit";
@@ -57,6 +58,14 @@ export async function POST(request: NextRequest) {
 
   const signalType = type as SignalType;
   const payloadStr = typeof payload === "string" ? payload : null;
+
+  if (
+    signalType === "request" &&
+    payloadStr !== null &&
+    !isValidFlare(payloadStr)
+  ) {
+    return Response.json({ error: "invalid payload" }, { status: 400 });
+  }
 
   if (await isSignalRateLimited(fromId)) {
     return Response.json({ error: "rate limited" }, { status: 429 });

@@ -2,9 +2,12 @@ import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { STALE_MS, SIGNAL_TTL_MS } from "@/lib/presence";
 import type { PollResponse } from "@/lib/types";
+import { isValidSessionId, requireSession } from "@/lib/session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const MAX_INBOX_BATCH = 50;
 
 // GET /api/poll?id= — the single endpoint that drives the live map.
 // It (1) heartbeats the caller, (2) reaps stale presence + orphan signals,
@@ -13,9 +16,12 @@ export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
   const id = params.get("id");
 
-  if (!id) {
-    return Response.json({ error: "missing id" }, { status: 400 });
+  if (!id || !isValidSessionId(id)) {
+    return Response.json({ error: "invalid id" }, { status: 400 });
   }
+
+  const authErr = await requireSession(request, id);
+  if (authErr) return authErr;
 
   const now = Date.now();
   const staleCutoff = new Date(now - STALE_MS);
@@ -46,6 +52,7 @@ export async function GET(request: NextRequest) {
   const inbox = await prisma.signal.findMany({
     where: { toId: id },
     orderBy: { createdAt: "asc" },
+    take: MAX_INBOX_BATCH,
   });
   if (inbox.length > 0) {
     await prisma.signal.deleteMany({

@@ -1,6 +1,8 @@
 import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import type { SignalType } from "@/lib/types";
+import { isMailboxFull, isSignalRateLimited } from "@/lib/rate-limit";
+import { isValidSessionId, requireSession } from "@/lib/session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,7 +35,10 @@ export async function POST(request: NextRequest) {
     unknown
   >;
 
-  if (typeof fromId !== "string" || typeof toId !== "string") {
+  if (!isValidSessionId(fromId) || !isValidSessionId(toId)) {
+    return Response.json({ error: "invalid ids" }, { status: 400 });
+  }
+  if (fromId === toId) {
     return Response.json({ error: "invalid ids" }, { status: 400 });
   }
   if (typeof type !== "string" || !VALID_TYPES.includes(type as SignalType)) {
@@ -47,25 +52,45 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "invalid payload" }, { status: 400 });
   }
 
+  const authErr = await requireSession(request, fromId);
+  if (authErr) return authErr;
+
   const signalType = type as SignalType;
   const payloadStr = typeof payload === "string" ? payload : null;
 
+  if (await isSignalRateLimited(fromId)) {
+    return Response.json({ error: "rate limited" }, { status: 429 });
+  }
+
+  const sender = await prisma.presence.findUnique({
+    where: { id: fromId },
+    select: { id: true },
+  });
+  if (!sender) {
+    return Response.json({ error: "sender offline" }, { status: 403 });
+  }
+
+  const recipient = await prisma.presence.findUnique({
+    where: { id: toId },
+    select: { busy: true },
+  });
+  if (!recipient) {
+    if (signalType === "request") {
+      await sendDecline(toId, fromId);
+      return Response.json({ ok: true, autoDeclined: true });
+    }
+    return Response.json({ error: "recipient offline" }, { status: 404 });
+  }
+
+  if (await isMailboxFull(toId)) {
+    return Response.json({ error: "mailbox full" }, { status: 429 });
+  }
+
   // Enforce "one active connection at a time": if the target is already busy,
   // auto-decline the request instead of delivering it.
-  if (signalType === "request") {
-    const target = await prisma.presence.findUnique({
-      where: { id: toId },
-      select: { busy: true },
-    });
-    if (!target) {
-      // Target went offline — tell the initiator it was declined.
-      await sendDecline(toId, fromId);
-      return Response.json({ ok: true, autoDeclined: true });
-    }
-    if (target.busy) {
-      await sendDecline(toId, fromId);
-      return Response.json({ ok: true, autoDeclined: true });
-    }
+  if (signalType === "request" && recipient.busy) {
+    await sendDecline(toId, fromId);
+    return Response.json({ ok: true, autoDeclined: true });
   }
 
   // Busy transitions:

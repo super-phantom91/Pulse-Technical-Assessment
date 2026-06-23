@@ -8,6 +8,7 @@ export async function join(
 ): Promise<{ lat: number; lng: number }> {
   const res = await fetch("/api/join", {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ id, lat, lng }),
   });
@@ -18,6 +19,7 @@ export async function join(
 
 export async function poll(id: string): Promise<PollResponse> {
   const res = await fetch(`/api/poll?id=${encodeURIComponent(id)}`, {
+    credentials: "include",
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`poll failed: ${res.status}`);
@@ -32,6 +34,7 @@ export async function sendSignal(
 ): Promise<void> {
   await fetch("/api/signal", {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ fromId, toId, type, payload }),
   });
@@ -45,6 +48,7 @@ export function leave(id: string): void {
   } else {
     void fetch("/api/leave", {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body,
       keepalive: true,

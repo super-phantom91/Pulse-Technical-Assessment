@@ -1,5 +1,10 @@
 import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import {
+  clearSessionCookie,
+  isValidSessionId,
+  requireSession,
+} from "@/lib/session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,16 +21,19 @@ export async function POST(request: NextRequest) {
     id = undefined;
   }
 
-  if (typeof id !== "string" || !id) {
+  if (!id || !isValidSessionId(id)) {
     return Response.json({ error: "invalid id" }, { status: 400 });
   }
 
-  // Independent cleanup deletes — no atomicity needed (and interactive
-  // transactions are unreliable over a PgBouncer pooler).
+  const authErr = await requireSession(request, id);
+  if (authErr) return authErr;
+
   await prisma.signal.deleteMany({
     where: { OR: [{ toId: id }, { fromId: id }] },
   });
   await prisma.presence.deleteMany({ where: { id } });
 
-  return Response.json({ ok: true });
+  const response = Response.json({ ok: true });
+  clearSessionCookie(response);
+  return response;
 }

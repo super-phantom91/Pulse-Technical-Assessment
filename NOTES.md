@@ -17,7 +17,6 @@
 **Test plan:** Two windows (normal + incognito), different mock locations → both enter → tap dot → accept → chat both ways → start video → close one tab → dot gone within ~15s.
 
 ---
-
 ## Phase 2 — Make it good
 
 **Design direction:** “Midnight aurora” — deep void background with soft teal/emerald bioluminescence, glass panels, and motion that reinforces the *living* globe concept. CSS-only animations (no extra dependencies).
@@ -40,16 +39,32 @@
 
 ## Phase 3 — Make it secure
 
-*Review done; fixes not yet implemented.*
+**Review approach:** Walked every `/api/*` route for auth, abuse, and data exposure. Prioritized fixes that work on Vercel serverless without adding Redis or accounts.
 
-| Priority | Issue | Notes |
-|----------|-------|-------|
-| **High** | No session auth on APIs | Any client can call `/api/signal` or `/api/leave` with arbitrary `fromId` / `id` — impersonation and griefing. |
-| **High** | Signal spam / mailbox flooding | No per-session rate limit on `/api/signal`; large payloads capped at 64 KB but volume is unchecked. |
-| **Medium** | Join coordinate abuse | Valid lat/lng only; no rate limit on `/api/join` upserts. |
-| **Low** | IP geo dependency | `/api/geo` calls a third-party service; acceptable for fallback but should be monitored / cached. |
+| Priority | Issue | Fix |
+|----------|-------|-----|
+| **High** | Session impersonation | Added server-issued `token` on `Presence` + HttpOnly `pulse_session` cookie set by `/api/join`. `poll`, `signal`, and `leave` now call `requireSession()` — cookie must match the claimed session id and DB token. |
+| **High** | Signal / mailbox flooding | Rate limit: max 120 signals/min per `fromId`. Cap pending inbox at 80 per `toId`. Drain max 50 signals per poll. |
+| **Medium** | Weak id validation | All session ids must be UUID v4. Reject `fromId === toId`. Sender must be an online presence row. |
+| **Medium** | Missing sender checks | `/api/signal` verifies sender exists; offline recipients return 404 (except auto-decline on `request`). |
+| **Low** | Browser hardening | Added `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, and `Permissions-Policy` via `next.config.ts`. |
+| **Low** | IP geo dependency | `/api/geo` unchanged — still a best-effort fallback; no PII stored. |
 
-**Fixed in Phase 1 (related):** raw coordinates never stored; privacy offset applied server-side.
+**How I fixed it:**
+
+1. **Threat model first** — Listed what an attacker could do without logging in: spoof `fromId` on `/api/signal`, drain someone’s mailbox, force `leave` on another user, spam join upserts.
+2. **Session binding** — `lib/session.ts` issues `id.token` in an HttpOnly cookie on join; every mutating/read-private route checks cookie + DB token. Client sends `credentials: "include"` on all fetches (sendBeacon is same-origin and carries cookies).
+3. **Abuse caps** — `lib/rate-limit.ts` counts recent signals per sender and pending rows per inbox; poll batch size capped so one tick can’t dump an unbounded mailbox.
+4. **Schema** — `Presence.token` + `@@index([fromId, createdAt])` on `Signal` for rate-limit queries.
+5. **Verify** — `npx prisma db push`, `npx tsc --noEmit`; smoke-test two tabs (join → poll → signal) to confirm 401 without cookie and normal flow with cookie.
+
+**What I did not fix (acceptable trade-offs for an anonymous MVP):**
+
+- No per-IP rate limits on `/api/join` or `/api/geo` (serverless has no shared memory; would need edge KV or WAF).
+- No cryptographic proof that WebRTC SDP payloads are well-formed (capped at 64 KB).
+- Session cookie is bound to browser, not user identity — still anonymous by design.
+
+**Deploy note:** Run `npx prisma db push` after pull — adds nullable `Presence.token` and a `Signal` index. Existing browser tabs must re-enter after deploy so join re-issues a matching cookie (legacy rows with `token = null` cannot authenticate).
 
 ---
 
@@ -58,3 +73,4 @@
 *Not started yet.*
 
 Ideas: live “pulse” animation on nearby dots, optional region heatmap of online count, report/block flow for safety, or a lightweight reconnect if a tab goes to background and polling pauses.
+

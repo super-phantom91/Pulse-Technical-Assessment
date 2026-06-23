@@ -21,6 +21,7 @@ type Conn =
 type VideoState = "none" | "requesting" | "incoming" | "active";
 
 const REQUEST_TIMEOUT_MS = 30_000;
+const CONNECT_TIMEOUT_MS = 30_000;
 
 export default function Home() {
   const [phase, setPhase] = useState<"gate" | "live">("gate");
@@ -51,6 +52,27 @@ export default function Home() {
   const peerRef = useRef<PeerSession | null>(null);
   const msgId = useRef(0);
   const requestTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const connectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function clearConnectTimer() {
+    if (connectTimer.current) {
+      clearTimeout(connectTimer.current);
+      connectTimer.current = null;
+    }
+  }
+
+  function startConnectTimer(peerId: string) {
+    clearConnectTimer();
+    connectTimer.current = setTimeout(() => {
+      if (
+        connRef.current.kind === "connecting" &&
+        connRef.current.peerId === peerId
+      ) {
+        void sendSignal(sessionId, peerId, "end");
+        teardown("Connection timed out.");
+      }
+    }, CONNECT_TIMEOUT_MS);
+  }
 
   function showNotice(text: string) {
     setNotice(text);
@@ -63,6 +85,7 @@ export default function Home() {
 
   function teardown(message?: string) {
     if (requestTimer.current) clearTimeout(requestTimer.current);
+    clearConnectTimer();
     peerRef.current?.close();
     peerRef.current = null;
     setLocalStream(null);
@@ -83,10 +106,15 @@ export default function Home() {
       onRemoteStream: (stream) => setRemoteStream(stream),
       onConnectionState: (state) => {
         if (state === "failed") {
+          const c = connRef.current;
+          if (c.kind === "connecting" || c.kind === "connected") {
+            void sendSignal(sessionId, c.peerId, "end");
+          }
           teardown("Connection failed (network).");
         }
       },
       onChannelOpen: () => {
+        clearConnectTimer();
         setConn({ kind: "connected", peerId });
       },
     });
@@ -156,6 +184,7 @@ export default function Home() {
     startPeer(peerId, false);
     void sendSignal(sessionId, peerId, "accept");
     setConn({ kind: "connecting", peerId });
+    startConnectTimer(peerId);
   }
 
   function declineIncoming() {
@@ -224,6 +253,7 @@ export default function Home() {
           if (requestTimer.current) clearTimeout(requestTimer.current);
           startPeer(sig.fromId, true);
           setConn({ kind: "connecting", peerId: sig.fromId });
+          startConnectTimer(sig.fromId);
         }
         break;
       }
@@ -251,7 +281,10 @@ export default function Home() {
       }
       case "end": {
         const c = connRef.current;
-        if (
+        if (c.kind === "requesting" && c.peerId === sig.fromId) {
+          if (requestTimer.current) clearTimeout(requestTimer.current);
+          teardown("Request cancelled.");
+        } else if (
           (c.kind === "incoming" ||
             c.kind === "connecting" ||
             c.kind === "connected") &&
@@ -300,12 +333,13 @@ export default function Home() {
     return () => {
       window.removeEventListener("pagehide", onLeave);
       window.removeEventListener("beforeunload", onLeave);
+      leave(sessionId);
     };
   }, [sessionId, phase]);
 
   async function handleReady(lat: number, lng: number) {
-    setMyLocation({ lat, lng });
-    await join(sessionId, lat, lng);
+    const { lat: offsetLat, lng: offsetLng } = await join(sessionId, lat, lng);
+    setMyLocation({ lat: offsetLat, lng: offsetLng });
     setPhase("live");
   }
 

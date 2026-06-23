@@ -39,9 +39,10 @@ export async function POST(request: NextRequest) {
     update: {
       lat: offset.lat,
       lng: offset.lng,
+      busy: false,
       lastSeen: new Date(),
     },
   });
 
-  return Response.json({ ok: true });
+  return Response.json({ ok: true, lat: offset.lat, lng: offset.lng });
 }

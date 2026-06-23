@@ -107,18 +107,21 @@ export class PeerSession {
     this.ignoreOffer = !this.polite && offerCollision;
     if (this.ignoreOffer) return;
 
-    await this.flushPendingCandidates();
     await this.pc.setRemoteDescription(desc);
+    await this.flushPendingCandidates();
     if (desc.type === "offer") {
       await this.pc.setLocalDescription();
       if (this.pc.localDescription) {
         this.cb.onSignal("answer", JSON.stringify(this.pc.localDescription));
       }
+      await this.flushPendingCandidates();
     }
   }
 
   private async flushPendingCandidates() {
-    if (this.pendingCandidates.length === 0) return;
+    if (this.pendingCandidates.length === 0 || !this.pc.remoteDescription) {
+      return;
+    }
     const queued = this.pendingCandidates;
     this.pendingCandidates = [];
     for (const candidate of queued) {
@@ -129,7 +132,7 @@ export class PeerSession {
   }
 
   sendChat(text: string) {
-    this.safeSend({ t: "msg", text });
+    this.safeSend({ t: "chat", text });
   }
 
   sendControl(ctrl: PeerControl) {

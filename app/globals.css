@@ -439,12 +439,110 @@ body {
   }
 }
 
+.chat-compose-input {
+  resize: none;
+  overflow-y: hidden;
+  line-height: 1.45;
+  min-height: 2.625rem;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #34d399 rgba(255, 255, 255, 0.06);
+}
+
+.chat-messages {
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: #34d399 rgba(255, 255, 255, 0.06);
+}
+
+.chat-messages::-webkit-scrollbar,
+.chat-compose-input::-webkit-scrollbar {
+  width: 8px;
+}
+
+.chat-compose-input::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-messages::-webkit-scrollbar-button,
+.chat-compose-input::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.chat-messages::-webkit-scrollbar-track,
+.chat-compose-input::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 9999px;
+  margin: 8px 2px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.25);
+}
+
+.chat-compose-input::-webkit-scrollbar-track {
+  margin: 6px 2px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb,
+.chat-compose-input::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #2dd4bf 0%, #34d399 45%, #10b981 100%);
+  border-radius: 9999px;
+  border: 2px solid rgba(8, 8, 14, 0.45);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 0 12px rgba(52, 211, 153, 0.35);
+  min-height: 40px;
+}
+
+.chat-compose-input::-webkit-scrollbar-thumb {
+  border-width: 1px;
+  min-height: 24px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 0 8px rgba(52, 211, 153, 0.3);
+}
+
+.chat-messages::-webkit-scrollbar-thumb:hover,
+.chat-compose-input::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #5eead4 0%, #6ee7b7 45%, #34d399 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 0 16px rgba(52, 211, 153, 0.55);
+}
+
+.chat-messages::-webkit-scrollbar-thumb:active,
+.chat-compose-input::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(180deg, #14b8a6 0%, #10b981 50%, #059669 100%);
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.2),
+    0 0 10px rgba(52, 211, 153, 0.4);
+}
+
+.chat-messages::-webkit-scrollbar-corner,
+.chat-compose-input::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 /* ── Emoji picker ────────────────────────────────────────────── */
 .emoji-picker-shell {
   display: flex;
   flex-direction: column;
   overflow: hidden;
   height: min(52vh, 22rem);
+  background: linear-gradient(
+    180deg,
+    rgba(12, 12, 18, 0.98) 0%,
+    rgba(8, 8, 14, 0.99) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(32px) saturate(1.2);
+  -webkit-backdrop-filter: blur(32px) saturate(1.2);
+  box-shadow:
+    0 -10px 36px rgba(0, 0, 0, 0.5),
+    0 16px 48px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .emoji-category-nav {
@@ -454,7 +552,10 @@ body {
   overflow-x: auto;
   overscroll-behavior: contain;
   padding: 0.5rem 0.5rem 0.35rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(8, 8, 14, 0.97);
+  cursor: grab;
+  touch-action: pan-x;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: #34d399 rgba(255, 255, 255, 0.07);
@@ -482,6 +583,16 @@ body {
 .emoji-category-nav::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(90deg, #5eead4 0%, #6ee7b7 50%, #34d399 100%);
   box-shadow: 0 0 12px rgba(52, 211, 153, 0.5);
+}
+
+.emoji-category-nav--dragging {
+  cursor: grabbing;
+  user-select: none;
+  touch-action: none;
+}
+
+.emoji-category-nav--dragging .emoji-category-tab {
+  pointer-events: none;
 }
 
 .emoji-category-tab {
@@ -531,6 +642,7 @@ body {
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
+  background: rgb(8, 8, 14);
   scrollbar-gutter: stable;
   /* Firefox */
   scrollbar-width: thin;
@@ -548,8 +660,8 @@ body {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: #71717a;
-  background: rgba(8, 8, 14, 0.92);
-  backdrop-filter: blur(8px);
+  background: rgb(8, 8, 14);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .emoji-picker-panel::-webkit-scrollbar {

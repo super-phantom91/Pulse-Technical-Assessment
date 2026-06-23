@@ -28,14 +28,33 @@ export default function ChatPanel({
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [emojiCategory, setEmojiCategory] = useState(CHAT_EMOJI_GROUPS[0].label);
   const endRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
   const categoryNavRef = useRef<HTMLDivElement>(null);
   const emojiPanelScrollRef = useRef<HTMLDivElement>(null);
+  const categoryDragRef = useRef({
+    active: false,
+    moved: false,
+    suppressClick: false,
+    startX: 0,
+    scrollLeft: 0,
+    pointerId: -1,
+  });
 
   const activeEmojiGroup =
     CHAT_EMOJI_GROUPS.find((g) => g.label === emojiCategory) ??
     CHAT_EMOJI_GROUPS[0];
+
+  const COMPOSE_MAX_HEIGHT = 160;
+
+  function resizeCompose() {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const next = Math.min(el.scrollHeight, COMPOSE_MAX_HEIGHT);
+    el.style.height = `${next}px`;
+    el.style.overflowY = el.scrollHeight > COMPOSE_MAX_HEIGHT ? "auto" : "hidden";
+  }
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -43,6 +62,82 @@ export default function ChatPanel({
 
   useEffect(() => {
     if (emojiOpen) setEmojiCategory(CHAT_EMOJI_GROUPS[0].label);
+  }, [emojiOpen]);
+
+  useEffect(() => {
+    if (!emojiOpen) return;
+    const navEl = categoryNavRef.current;
+    if (!navEl) return;
+    const nav: HTMLDivElement = navEl;
+
+    const drag = categoryDragRef.current;
+
+    function onPointerDown(e: PointerEvent) {
+      if (e.button !== 0) return;
+      if (!nav.contains(e.target as Node)) return;
+
+      drag.active = true;
+      drag.moved = false;
+      drag.suppressClick = false;
+      drag.startX = e.clientX;
+      drag.scrollLeft = nav.scrollLeft;
+      drag.pointerId = e.pointerId;
+    }
+
+    function onPointerMove(e: PointerEvent) {
+      if (!drag.active || drag.pointerId !== e.pointerId) return;
+
+      const dx = e.clientX - drag.startX;
+      if (!drag.moved && Math.abs(dx) > 5) {
+        drag.moved = true;
+        nav.classList.add("emoji-category-nav--dragging");
+      }
+      if (drag.moved) {
+        e.preventDefault();
+        nav.scrollLeft = drag.scrollLeft - dx;
+      }
+    }
+
+    function endDrag(e: PointerEvent) {
+      if (!drag.active || drag.pointerId !== e.pointerId) return;
+
+      nav.classList.remove("emoji-category-nav--dragging");
+      if (drag.moved) {
+        drag.suppressClick = true;
+        window.setTimeout(() => {
+          drag.suppressClick = false;
+        }, 100);
+      }
+
+      drag.active = false;
+      drag.moved = false;
+      drag.pointerId = -1;
+    }
+
+    function onWheel(e: WheelEvent) {
+      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      if (delta === 0) return;
+      e.preventDefault();
+      nav.scrollLeft += delta;
+    }
+
+    nav.addEventListener("pointerdown", onPointerDown);
+    nav.addEventListener("wheel", onWheel, { passive: false });
+    window.addEventListener("pointermove", onPointerMove, { passive: false });
+    window.addEventListener("pointerup", endDrag);
+    window.addEventListener("pointercancel", endDrag);
+
+    return () => {
+      nav.removeEventListener("pointerdown", onPointerDown);
+      nav.removeEventListener("wheel", onWheel);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", endDrag);
+      window.removeEventListener("pointercancel", endDrag);
+      nav.classList.remove("emoji-category-nav--dragging");
+      drag.active = false;
+      drag.moved = false;
+      drag.pointerId = -1;
+    };
   }, [emojiOpen]);
 
   useEffect(() => {
@@ -73,18 +168,34 @@ export default function ChatPanel({
     return () => document.removeEventListener("mousedown", onPointerDown);
   }, [emojiOpen]);
 
+  useEffect(() => {
+    resizeCompose();
+  }, [draft]);
+
   function insertEmoji(emoji: string) {
     setDraft((prev) => prev + emoji);
     inputRef.current?.focus();
   }
 
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
+  function submit(e?: React.FormEvent) {
+    e?.preventDefault();
     const text = draft.trim();
     if (!text || !connected) return;
     onSend(text);
     setDraft("");
     setEmojiOpen(false);
+  }
+
+  function onComposeKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      submit();
+    }
+  }
+
+  function selectEmojiCategory(label: string) {
+    if (categoryDragRef.current.suppressClick) return;
+    setEmojiCategory(label);
   }
 
   return (
@@ -132,7 +243,7 @@ export default function ChatPanel({
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 space-y-3 overflow-x-hidden overflow-y-auto px-4 py-4">
+      <div className="chat-messages min-h-0 flex-1 space-y-3 overflow-x-hidden overflow-y-auto px-4 py-4">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center py-10 text-center">
             <p className="text-3xl" aria-hidden>
@@ -163,7 +274,7 @@ export default function ChatPanel({
         {emojiOpen && connected && (
           <div
             ref={pickerRef}
-            className="emoji-picker-shell animate-scale-in glass-panel absolute right-2 bottom-full left-2 mb-2 rounded-2xl shadow-xl"
+            className="emoji-picker-shell animate-scale-in absolute right-2 bottom-full left-2 mb-2 rounded-2xl"
           >
             <nav
               ref={categoryNavRef}
@@ -182,7 +293,7 @@ export default function ChatPanel({
                     aria-selected={active}
                     title={group.label}
                     className={`emoji-category-tab ${active ? "emoji-category-tab--active" : ""}`}
-                    onClick={() => setEmojiCategory(group.label)}
+                    onClick={() => selectEmojiCategory(group.label)}
                   >
                     <span className="emoji-category-icon" aria-hidden>
                       {group.icon}
@@ -219,7 +330,7 @@ export default function ChatPanel({
 
         <form
           onSubmit={submit}
-          className="flex gap-2 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+          className="flex items-end gap-2 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
         >
           <button
             type="button"
@@ -232,13 +343,16 @@ export default function ChatPanel({
           >
             😊
           </button>
-          <input
+          <textarea
             ref={inputRef}
+            rows={1}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={onComposeKeyDown}
             placeholder={connected ? "Type a message…" : "Connecting…"}
             disabled={!connected}
-            className="min-w-0 flex-1 rounded-2xl border border-white/5 bg-white/5 px-4 py-2.5 text-sm outline-none placeholder:text-zinc-600 focus:border-emerald-400/40 focus:ring-1 focus:ring-emerald-400/30 disabled:opacity-45"
+            aria-label="Message"
+            className="chat-compose-input min-w-0 flex-1 rounded-2xl border border-white/5 bg-white/5 px-4 py-2.5 text-sm outline-none placeholder:text-zinc-600 focus:border-emerald-400/40 focus:ring-1 focus:ring-emerald-400/30 disabled:opacity-45"
           />
           <button
             type="submit"
